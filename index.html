@@ -1,0 +1,2927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Learn with Sam | DevOps Learning Hub</title>
+
+  <meta
+    name="description"
+    content="Learn with Sam — DevOps Learning Hub for Cloud, DevOps, Infrastructure, Automation, Security, MLOps and AI."
+  />
+
+  <!-- Fonts — same as Azure AZ-900 dashboard -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Font Awesome — social + UI icons -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+  />
+
+  <!-- Devicon — technology logos -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/devicon.min.css"
+  />
+
+  <script src="./assets/js/network-background.js" defer></script>
+  <style>
+    .hero, footer { isolation: isolate; position: relative; }
+    .network-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; opacity: .42; }
+    .hero > .container, footer > .container { position: relative; z-index: 1; }
+    @media print { .network-canvas { display: none; } }
+    :root {
+      --bg: #0B0F1A;
+      --surface: #131929;
+      --card: #1A2235;
+
+      --text: #F0F4FF;
+      --text-sub: #B8C5D6;
+      --text-mute: #7A8FA6;
+      --text-dim: #4E6278;
+
+      --border: rgba(255, 255, 255, 0.09);
+      --border-hi: rgba(255, 255, 255, 0.18);
+
+      --cyan: #22D3EE;
+      --violet: #A78BFA;
+      --amber: #FBBF24;
+      --green: #34D399;
+      --red: #F87171;
+      --pink: #F472B6;
+
+      --cyan-glow: rgba(34, 211, 238, 0.20);
+      --violet-glow: rgba(167, 139, 250, 0.20);
+      --amber-glow: rgba(251, 191, 36, 0.20);
+
+      --font: "Poppins", sans-serif;
+      --mono: "Fira Code", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    body::-webkit-scrollbar-track {
+      background: var(--bg);
+    }
+
+    body::-webkit-scrollbar-thumb {
+      background: #1e2d40;
+      border-radius: 10px;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button {
+      font-family: var(--font);
+    }
+
+    .container {
+      width: min(1180px, calc(100% - 40px));
+      margin: 0 auto;
+    }
+
+    /* =========================================
+       GLOBAL HOVER / GLOW
+       ========================================= */
+
+    .glow-hover {
+      transition:
+        transform 0.25s ease,
+        border-color 0.25s ease,
+        box-shadow 0.25s ease,
+        background 0.25s ease;
+    }
+
+    .glow-hover:hover {
+      transform: translateY(-3px);
+      box-shadow:
+        0 8px 30px rgba(34, 211, 238, 0.08),
+        0 0 22px rgba(34, 211, 238, 0.07);
+    }
+
+    /* =========================================
+       NAVIGATION
+       ========================================= */
+
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+
+      background: rgba(11, 15, 26, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-inner {
+      min-height: 68px;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 9px;
+
+      background: rgba(34, 211, 238, 0.10);
+      border: 1px solid rgba(34, 211, 238, 0.25);
+
+      color: var(--cyan);
+      font-family: var(--mono);
+      font-size: 15px;
+      font-weight: 500;
+
+      transition:
+        box-shadow 0.25s ease,
+        transform 0.25s ease;
+    }
+
+    .brand:hover .brand-mark {
+      transform: translateY(-1px);
+      box-shadow:
+        0 0 18px rgba(34, 211, 238, 0.20),
+        inset 0 0 12px rgba(34, 211, 238, 0.05);
+    }
+
+    .brand span {
+      color: var(--text);
+    }
+
+    .brand em {
+      color: var(--cyan);
+      font-style: normal;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 25px;
+    }
+
+    .nav-links a {
+      position: relative;
+
+      color: var(--text-mute);
+      font-size: 12px;
+      font-weight: 500;
+
+      transition:
+        color 0.2s ease,
+        text-shadow 0.2s ease;
+    }
+
+    .nav-links a::after {
+      content: "";
+
+      position: absolute;
+
+      left: 50%;
+      bottom: -7px;
+
+      width: 0;
+      height: 1px;
+
+      transform: translateX(-50%);
+
+      background: var(--cyan);
+
+      box-shadow: 0 0 8px rgba(34, 211, 238, 0.7);
+
+      transition: width 0.2s ease;
+    }
+
+    .nav-links a:hover {
+      color: var(--cyan);
+      text-shadow: 0 0 12px rgba(34, 211, 238, 0.30);
+    }
+
+    .nav-links a:hover::after {
+      width: 100%;
+    }
+
+    /* =========================================
+       HERO
+       ========================================= */
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+
+      padding: 100px 0 85px;
+
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hero::before {
+      content: "";
+
+      position: absolute;
+
+      width: 650px;
+      height: 650px;
+
+      top: -300px;
+      left: 50%;
+
+      transform: translateX(-50%);
+
+      background: radial-gradient(
+        circle,
+        rgba(34, 211, 238, 0.08) 0%,
+        rgba(34, 211, 238, 0.025) 35%,
+        transparent 70%
+      );
+
+      pointer-events: none;
+    }
+
+    .hero-content {
+      position: relative;
+
+      max-width: 850px;
+      margin: 0 auto;
+
+      text-align: center;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+
+      padding: 6px 12px;
+
+      border: 1px solid rgba(34, 211, 238, 0.20);
+      border-radius: 20px;
+
+      background: rgba(34, 211, 238, 0.06);
+
+      color: var(--cyan);
+
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+
+      border-radius: 50%;
+
+      background: var(--green);
+
+      box-shadow:
+        0 0 10px rgba(52, 211, 153, 0.6);
+    }
+
+    .hero h1 {
+      margin: 25px 0 16px;
+
+      font-size: clamp(38px, 6vw, 68px);
+      line-height: 1.05;
+
+      letter-spacing: -2.5px;
+      font-weight: 700;
+    }
+
+    .hero h1 .gradient {
+      background: linear-gradient(
+        90deg,
+        var(--cyan),
+        var(--violet),
+        var(--amber)
+      );
+
+      -webkit-background-clip: text;
+      background-clip: text;
+
+      color: transparent;
+    }
+
+    .hero-subtitle {
+      max-width: 720px;
+      margin: 0 auto;
+
+      color: var(--text-sub);
+
+      font-size: 16px;
+      line-height: 1.8;
+    }
+
+    .hero-actions {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+
+      margin-top: 30px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+
+      min-height: 42px;
+      padding: 0 19px;
+
+      border-radius: 9px;
+
+      font-size: 12px;
+      font-weight: 600;
+
+      transition:
+        transform 0.25s ease,
+        border-color 0.25s ease,
+        background 0.25s ease,
+        box-shadow 0.25s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn-primary {
+      background: var(--cyan);
+      color: #071017;
+
+      border: 1px solid var(--cyan);
+
+      box-shadow:
+        0 7px 25px rgba(34, 211, 238, 0.13);
+    }
+
+    .btn-primary:hover {
+      box-shadow:
+        0 8px 30px rgba(34, 211, 238, 0.22),
+        0 0 20px rgba(34, 211, 238, 0.13);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-sub);
+
+      border: 1px solid var(--border-hi);
+    }
+
+    .btn-secondary:hover {
+      border-color: rgba(34, 211, 238, 0.35);
+      color: var(--cyan);
+
+      box-shadow:
+        0 8px 25px rgba(34, 211, 238, 0.07);
+    }
+
+    /* =========================================
+       SECTIONS
+       ========================================= */
+
+    section {
+      padding: 78px 0;
+    }
+
+    .section-heading {
+      margin-bottom: 34px;
+    }
+
+    .section-label {
+      margin-bottom: 8px;
+
+      color: var(--cyan);
+
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+    }
+
+    .section-heading h2 {
+      margin: 0;
+
+      color: var(--text);
+
+      font-size: 27px;
+      line-height: 1.3;
+      letter-spacing: -0.6px;
+    }
+
+    .section-heading p {
+      max-width: 720px;
+      margin: 10px 0 0;
+
+      color: var(--text-mute);
+
+      font-size: 13px;
+      line-height: 1.75;
+    }
+
+    /* =========================================
+       LEARNING PATH
+       ========================================= */
+
+    .path-wrapper {
+      position: relative;
+
+      padding: 30px;
+
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+
+      overflow: hidden;
+    }
+
+    .path-wrapper:hover {
+      border-color: rgba(34, 211, 238, 0.15);
+
+      box-shadow:
+        0 10px 40px rgba(34, 211, 238, 0.035);
+    }
+
+    .path-line {
+      position: absolute;
+
+      top: 63px;
+      left: 8%;
+      right: 8%;
+
+      height: 1px;
+
+      background: linear-gradient(
+        90deg,
+        var(--cyan),
+        var(--violet),
+        var(--amber)
+      );
+
+      opacity: 0.25;
+    }
+
+    .path {
+      position: relative;
+
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+
+      gap: 12px;
+    }
+
+    .path-item {
+      position: relative;
+
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+
+      text-align: center;
+    }
+
+    .path-icon {
+      position: relative;
+      z-index: 2;
+
+      width: 48px;
+      height: 48px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 12px;
+
+      background: var(--card);
+      border: 1px solid var(--border-hi);
+
+      font-size: 19px;
+
+      transition:
+        transform 0.25s ease,
+        box-shadow 0.25s ease;
+    }
+
+    .path-item:hover .path-icon {
+      transform: translateY(-3px);
+
+      box-shadow:
+        0 7px 20px rgba(34, 211, 238, 0.08),
+        0 0 16px rgba(34, 211, 238, 0.05);
+    }
+
+    .path-item:nth-child(1) .path-icon,
+    .path-item:nth-child(2) .path-icon {
+      color: var(--cyan);
+      border-color: rgba(34, 211, 238, 0.25);
+    }
+
+    .path-item:nth-child(3) .path-icon,
+    .path-item:nth-child(4) .path-icon,
+    .path-item:nth-child(5) .path-icon {
+      color: var(--violet);
+      border-color: rgba(167, 139, 250, 0.25);
+    }
+
+    .path-item:nth-child(6) .path-icon,
+    .path-item:nth-child(7) .path-icon,
+    .path-item:nth-child(8) .path-icon,
+    .path-item:nth-child(9) .path-icon {
+      color: var(--amber);
+      border-color: rgba(251, 191, 36, 0.25);
+    }
+
+    .path-title {
+      margin-top: 11px;
+
+      color: var(--text-sub);
+
+      font-size: 10px;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+
+    /* =========================================
+       DASHBOARDS
+       ========================================= */
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .dashboard-card {
+      position: relative;
+
+      display: flex;
+      flex-direction: column;
+
+      min-height: 215px;
+      padding: 20px;
+
+      background: var(--card);
+
+      border: 1px solid var(--border);
+      border-radius: 13px;
+
+      overflow: hidden;
+
+      transition:
+        transform 0.25s ease,
+        border-color 0.25s ease,
+        background 0.25s ease,
+        box-shadow 0.25s ease;
+    }
+
+    .dashboard-card:hover {
+      transform: translateY(-4px);
+
+      border-color: var(--card-color);
+
+      background: #1c263b;
+
+      box-shadow:
+        0 12px 35px rgba(0, 0, 0, 0.22),
+        0 0 22px var(--card-glow);
+    }
+
+    .dashboard-card.available {
+      border-color: rgba(34, 211, 238, 0.18);
+    }
+
+    .card-top-line {
+      position: absolute;
+
+      top: 0;
+      left: 0;
+      right: 0;
+
+      height: 3px;
+
+      background: var(--card-color);
+
+      opacity: 0.9;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+
+      gap: 12px;
+    }
+
+    .card-icon {
+      width: 43px;
+      height: 43px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 10px;
+
+      background: var(--card-glow);
+      border: 1px solid var(--card-border);
+
+      font-size: 19px;
+
+      transition:
+        transform 0.25s ease,
+        box-shadow 0.25s ease;
+    }
+
+    .dashboard-card:hover .card-icon {
+      transform: translateY(-2px);
+
+      box-shadow:
+        0 0 18px var(--card-glow);
+    }
+
+    .status {
+      padding: 4px 8px;
+
+      border-radius: 20px;
+
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+    }
+
+    .status.available {
+      color: var(--green);
+      background: rgba(52, 211, 153, 0.09);
+      border: 1px solid rgba(52, 211, 153, 0.18);
+    }
+
+    .status.soon {
+      color: var(--text-mute);
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid var(--border);
+    }
+
+    .card-title {
+      margin-top: 17px;
+
+      color: var(--text);
+
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .card-description {
+      margin-top: 7px;
+
+      color: var(--text-mute);
+
+      font-size: 11px;
+      line-height: 1.7;
+    }
+
+    .card-focus {
+      margin-top: auto;
+      padding-top: 15px;
+
+      color: var(--text-dim);
+
+      font-family: var(--mono);
+      font-size: 9px;
+      line-height: 1.6;
+    }
+
+    .card-focus span {
+      color: var(--card-color);
+    }
+
+    /* =========================================
+       LEARNING EXPERIENCE
+       ========================================= */
+
+    .experience-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .experience-card {
+      padding: 22px;
+
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 13px;
+
+      transition:
+        transform 0.25s ease,
+        border-color 0.25s ease,
+        box-shadow 0.25s ease;
+    }
+
+    .experience-card:hover {
+      transform: translateY(-3px);
+
+      border-color: var(--border-hi);
+
+      box-shadow:
+        0 10px 28px rgba(34, 211, 238, 0.045);
+    }
+
+    .experience-icon {
+      width: 40px;
+      height: 40px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      margin-bottom: 16px;
+
+      border-radius: 9px;
+
+      font-size: 17px;
+    }
+
+    .experience-card:nth-child(1) .experience-icon {
+      color: var(--cyan);
+      background: var(--cyan-glow);
+    }
+
+    .experience-card:nth-child(2) .experience-icon {
+      color: var(--violet);
+      background: var(--violet-glow);
+    }
+
+    .experience-card:nth-child(3) .experience-icon {
+      color: var(--amber);
+      background: var(--amber-glow);
+    }
+
+    .experience-card:nth-child(4) .experience-icon {
+      color: var(--green);
+      background: rgba(52, 211, 153, 0.12);
+    }
+
+    .experience-card:nth-child(5) .experience-icon {
+      color: var(--pink);
+      background: rgba(244, 114, 182, 0.12);
+    }
+
+    .experience-card:nth-child(6) .experience-icon {
+      color: var(--cyan);
+      background: var(--cyan-glow);
+    }
+
+    .experience-card h3 {
+      margin: 0 0 7px;
+
+      color: var(--text);
+
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .experience-card p {
+      margin: 0;
+
+      color: var(--text-mute);
+
+      font-size: 11px;
+      line-height: 1.75;
+    }
+
+    /* =========================================
+       CONTINUOUS DEVELOPMENT
+       ========================================= */
+
+    .development-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+
+      column-gap: 64px;
+      row-gap: 32px;
+
+      align-items: center;
+    }
+
+    .development-content .section-heading {
+      margin-bottom: 0;
+    }
+    .development-content { grid-column: 1; grid-row: 1; }
+    .development-image { grid-column: 2; grid-row: 1; }
+
+    .development-image {
+      position: relative;
+
+      min-height: 320px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      padding: 20px;
+
+      background: var(--surface);
+
+      border: 1px solid var(--border);
+      border-radius: 14px;
+
+      overflow: hidden;
+    }
+
+    .development-image::before {
+      content: "";
+
+      position: absolute;
+
+      width: 350px;
+      height: 350px;
+
+      background: radial-gradient(
+        circle,
+        rgba(34, 211, 238, 0.09),
+        transparent 70%
+      );
+
+      pointer-events: none;
+    }
+
+    .development-image img {
+      position: relative;
+
+      display: block;
+
+      width: 100%;
+      max-width: none;
+
+      height: auto;
+
+      border-radius: 10px;
+
+      object-fit: contain;
+
+      opacity: 1;
+    }
+
+    .development-note {
+      margin-top: 22px;
+
+      padding: 14px 16px;
+
+      background: rgba(34, 211, 238, 0.045);
+
+      border: 1px solid rgba(34, 211, 238, 0.12);
+
+      border-radius: 9px;
+
+      color: var(--text-mute);
+
+      font-size: 11px;
+      line-height: 1.75;
+    }
+
+    .development-note strong {
+      color: var(--text-sub);
+    }
+
+    .notes-link {
+      display: inline-block;
+
+      margin-top: 9px;
+
+      color: var(--cyan);
+
+      font-size: 11px;
+      font-weight: 600;
+
+      transition:
+        color 0.2s ease,
+        text-shadow 0.2s ease;
+    }
+
+    .notes-link:hover {
+      color: #67e8f9;
+
+      text-shadow:
+        0 0 12px rgba(34, 211, 238, 0.35);
+    }
+
+    /* =========================================
+       ECOSYSTEM
+       ========================================= */
+
+    .ecosystem-box {
+      position: relative;
+
+      padding: 34px;
+
+      background: var(--surface);
+
+      border: 1px solid var(--border);
+      border-radius: 14px;
+
+      text-align: center;
+
+      overflow: hidden;
+
+      transition:
+        border-color 0.25s ease,
+        box-shadow 0.25s ease;
+    }
+
+    .ecosystem-box:hover {
+      border-color: rgba(167, 139, 250, 0.18);
+
+      box-shadow:
+        0 12px 35px rgba(167, 139, 250, 0.035);
+    }
+
+    .ecosystem-box::before {
+      content: "";
+
+      position: absolute;
+
+      width: 500px;
+      height: 200px;
+
+      left: 50%;
+      bottom: -170px;
+
+      transform: translateX(-50%);
+
+      background: radial-gradient(
+        ellipse,
+        rgba(167, 139, 250, 0.10),
+        transparent 70%
+      );
+    }
+
+    .ecosystem-title {
+      position: relative;
+
+      color: var(--text);
+
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .ecosystem-subtitle {
+      position: relative;
+
+      max-width: 680px;
+
+      margin: 10px auto 0;
+
+      color: var(--text-mute);
+
+      font-size: 12px;
+      line-height: 1.8;
+    }
+
+    .ecosystem-logos {
+      position: relative;
+
+      display: grid;
+
+      grid-template-columns: repeat(6, 1fr);
+
+      gap: 14px;
+
+      margin-top: 30px;
+    }
+
+    .tech-logo {
+      position: relative;
+
+      height: 78px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      background: rgba(255, 255, 255, 0.018);
+
+      border: 1px solid var(--border);
+
+      border-radius: 11px;
+
+      color: var(--text-sub);
+
+      transition:
+        transform 0.25s ease,
+        border-color 0.25s ease,
+        background 0.25s ease,
+        box-shadow 0.25s ease;
+    }
+
+    .tech-logo i {
+      font-size: 34px;
+
+      transition:
+        transform 0.25s ease,
+        filter 0.25s ease;
+    }
+
+    .tech-logo:hover {
+      transform: translateY(-4px);
+
+      background: rgba(255, 255, 255, 0.035);
+
+      border-color: rgba(34, 211, 238, 0.30);
+
+      box-shadow:
+        0 8px 25px rgba(34, 211, 238, 0.07),
+        0 0 18px rgba(34, 211, 238, 0.04);
+    }
+
+    .tech-logo:hover i {
+      transform: scale(1.08);
+
+      filter:
+        drop-shadow(0 0 9px rgba(34, 211, 238, 0.20));
+    }
+
+    /*
+      Tooltip:
+      technology name appears only when hovering.
+    */
+
+    .tech-logo::after {
+      content: attr(data-name);
+
+      position: absolute;
+
+      left: 50%;
+      bottom: 7px;
+
+      transform:
+        translateX(-50%)
+        translateY(5px);
+
+      padding: 3px 7px;
+
+      border-radius: 5px;
+
+      background: rgba(11, 15, 26, 0.95);
+
+      border: 1px solid var(--border-hi);
+
+      color: var(--text-sub);
+
+      font-family: var(--mono);
+      font-size: 8px;
+
+      white-space: nowrap;
+
+      opacity: 0;
+
+      pointer-events: none;
+
+      transition:
+        opacity 0.2s ease,
+        transform 0.2s ease;
+    }
+
+    .tech-logo:hover::after {
+      opacity: 1;
+
+      transform:
+        translateX(-50%)
+        translateY(0);
+    }
+
+    /* =========================================
+       CREATOR
+       ========================================= */
+
+    .creator {
+      padding-top: 30px;
+    }
+
+    .creator-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      gap: 30px;
+
+      padding: 28px 30px;
+
+      background: var(--surface);
+
+      border: 1px solid var(--border);
+      border-radius: 14px;
+
+      transition:
+        border-color 0.25s ease,
+        box-shadow 0.25s ease;
+    }
+
+    .creator-card:hover {
+      border-color: rgba(34, 211, 238, 0.16);
+
+      box-shadow:
+        0 10px 35px rgba(34, 211, 238, 0.035);
+    }
+
+    .creator-info {
+      display: flex;
+      align-items: flex-start;
+
+      gap: 18px;
+    }
+
+    .creator-mark {
+      width: 56px;
+      height: 56px;
+
+      flex-shrink: 0;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 13px;
+
+      background: rgba(34, 211, 238, 0.08);
+
+      border: 1px solid rgba(34, 211, 238, 0.22);
+
+      color: var(--cyan);
+
+      font-family: var(--mono);
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .creator-name {
+      color: var(--text);
+
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .creator-role {
+      margin-top: 4px;
+
+      color: var(--cyan);
+
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .creator-description {
+      max-width: 650px;
+
+      margin-top: 7px;
+
+      color: var(--text-mute);
+
+      font-size: 10px;
+      line-height: 1.7;
+    }
+
+    /* =========================================
+       SOCIAL ICONS
+       ========================================= */
+
+    .social-links {
+      display: flex;
+      align-items: center;
+
+      gap: 7px;
+
+      margin-top: 14px;
+    }
+
+    .social-link {
+      width: 34px;
+      height: 32px;
+
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 7px;
+
+      background: rgba(255, 255, 255, 0.025);
+
+      border: 1px solid rgba(255, 255, 255, 0.10);
+
+      color: var(--text-mute);
+
+      font-size: 13px;
+
+      transition:
+        transform 0.25s ease,
+        color 0.25s ease,
+        border-color 0.25s ease,
+        background 0.25s ease,
+        box-shadow 0.25s ease;
+    }
+
+    .social-link:hover {
+      transform: translateY(-3px);
+
+      color: var(--cyan);
+
+      background: rgba(34, 211, 238, 0.055);
+
+      border-color: rgba(34, 211, 238, 0.30);
+
+      box-shadow:
+        0 5px 18px rgba(34, 211, 238, 0.08),
+        0 0 14px rgba(34, 211, 238, 0.045);
+    }
+
+    .whoami {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+
+      min-height: 38px;
+
+      padding: 0 16px;
+
+      border-radius: 8px;
+
+      background: rgba(255, 255, 255, 0.04);
+
+      border: 1px solid var(--border-hi);
+
+      color: var(--text-sub);
+
+      font-size: 11px;
+      font-weight: 600;
+
+      transition:
+        transform 0.25s ease,
+        color 0.25s ease,
+        border-color 0.25s ease,
+        box-shadow 0.25s ease;
+    }
+
+    .whoami:hover {
+      transform: translateY(-2px);
+
+      color: var(--cyan);
+
+      border-color: rgba(34, 211, 238, 0.35);
+
+      box-shadow:
+        0 7px 22px rgba(34, 211, 238, 0.07),
+        0 0 15px rgba(34, 211, 238, 0.04);
+    }
+
+    /* =========================================
+       FOOTER
+       ========================================= */
+
+    footer {
+      margin-top: 20px;
+
+      border-top: 1px solid var(--border);
+    }
+
+    .footer-inner {
+      padding: 28px 0 32px;
+
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+
+      text-align: center;
+    }
+
+    .footer-main {
+      color: var(--text-sub);
+
+      font-size: 12px;
+      line-height: 1.7;
+
+      font-weight: 600;
+    }
+
+    .footer-sub {
+      margin-top: 7px;
+
+      color: var(--text-dim);
+
+      font-size: 10px;
+    }
+
+    .footer-copy {
+      margin-top: 14px;
+
+      color: var(--text-dim);
+
+      font-size: 10px;
+    }
+
+    /* =========================================
+       BACK TO TOP
+       ========================================= */
+
+    .back-to-top {
+      position: fixed;
+
+      right: 22px;
+      bottom: 22px;
+
+      z-index: 99;
+
+      width: 40px;
+      height: 40px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 10px;
+
+      background: rgba(19, 25, 41, 0.90);
+
+      border: 1px solid var(--border-hi);
+
+      color: var(--text-sub);
+
+      cursor: pointer;
+
+      opacity: 0;
+      visibility: hidden;
+
+      transform: translateY(10px);
+
+      transition:
+        opacity 0.25s ease,
+        visibility 0.25s ease,
+        transform 0.25s ease,
+        color 0.25s ease,
+        border-color 0.25s ease,
+        box-shadow 0.25s ease;
+    }
+
+    .back-to-top.show {
+      opacity: 1;
+      visibility: visible;
+
+      transform: translateY(0);
+    }
+
+    .back-to-top:hover {
+      color: var(--cyan);
+
+      border-color: rgba(34, 211, 238, 0.35);
+
+      box-shadow:
+        0 6px 22px rgba(34, 211, 238, 0.08),
+        0 0 15px rgba(34, 211, 238, 0.05);
+
+      transform: translateY(-3px);
+    }
+
+    /* =========================================
+       RESPONSIVE
+       ========================================= */
+
+    @media (max-width: 1050px) {
+      .path {
+        grid-template-columns: repeat(5, 1fr);
+        row-gap: 25px;
+      }
+
+      .path-line {
+        display: none;
+      }
+
+      .dashboard-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .experience-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .ecosystem-logos {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    @media (max-width: 800px) {
+      .development-grid {
+        grid-template-columns: 1fr;
+        gap: 30px;
+      }
+      .development-content { grid-column: 1; grid-row: 1; }
+      .development-image { grid-column: 1; grid-row: 2; }
+
+      .development-image {
+        min-height: 260px;
+      }
+
+      .creator-card {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .whoami {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .container {
+        width: min(100% - 28px, 1180px);
+      }
+
+      .nav-inner {
+        min-height: 60px;
+      }
+
+      .nav-links {
+        display: none;
+      }
+
+      .hero {
+        padding: 72px 0 65px;
+      }
+
+      .hero h1 {
+        font-size: 40px;
+        letter-spacing: -1.5px;
+      }
+
+      .hero-subtitle {
+        font-size: 13px;
+      }
+
+      section {
+        padding: 58px 0;
+      }
+
+      .section-heading h2 {
+        font-size: 23px;
+      }
+
+      .path-wrapper {
+        padding: 22px 15px;
+      }
+
+      .path {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .dashboard-grid,
+      .experience-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .ecosystem-logos {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .creator-info {
+        width: 100%;
+      }
+
+      .social-links {
+        flex-wrap: wrap;
+      }
+    }
+
+    @media (max-width: 430px) {
+      .path {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px 8px;
+      }
+
+      .path-icon {
+        width: 42px;
+        height: 42px;
+      }
+
+      .path-title {
+        font-size: 9px;
+      }
+
+      .hero h1 {
+        font-size: 34px;
+      }
+
+      .hero-actions {
+        flex-direction: column;
+        width: 100%;
+      }
+
+      .btn {
+        width: 100%;
+      }
+
+      .ecosystem-logos {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .creator-info {
+        flex-direction: column;
+      }
+    }
+    /* Shared accent treatment for hover and keyboard focus. */
+    :root { --accent: var(--cyan); }
+    a, button { -webkit-tap-highlight-color: transparent; }
+    a:focus-visible, button:focus-visible, .tech-logo:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 5px;
+    }
+    .btn, .whoami, .social-link, .back-to-top, .dashboard-card,
+    .experience-card, .path-icon, .tech-logo {
+      border-radius: 8px;
+      transition: transform .25s ease, border-color .25s ease,
+        box-shadow .25s ease, background .25s ease, color .25s ease;
+    }
+    .dashboard-card { --accent: var(--card-color); }
+    .path-item:nth-child(n+3) { --accent: var(--violet); }
+    .path-item:nth-child(n+6) { --accent: var(--amber); }
+    .experience-card:nth-child(2), .tech-logo:nth-child(4) { --accent: var(--violet); }
+    .experience-card:nth-child(3), .tech-logo:nth-child(2),
+    .tech-logo:nth-child(9), .tech-logo:nth-child(12) { --accent: var(--amber); }
+    .experience-card:nth-child(4), .tech-logo:nth-child(1) { --accent: var(--green); }
+    .experience-card:nth-child(5) { --accent: var(--pink); }
+    .tech-logo:nth-child(7), .tech-logo:nth-child(10), .tech-logo:nth-child(11),
+    .social-link:nth-child(3) { --accent: var(--red); }
+    .social-link:nth-child(2) { --accent: var(--violet); }
+    .social-link:nth-child(4) { --accent: var(--green); }
+    .btn:is(:hover, :focus-visible), .whoami:is(:hover, :focus-visible),
+    .social-link:is(:hover, :focus-visible), .back-to-top:is(:hover, :focus-visible),
+    .dashboard-card:is(:hover, :focus-visible), .experience-card:hover,
+    .path-item:hover .path-icon, .tech-logo:is(:hover, :focus-visible) {
+      transform: translateY(-3px);
+      border-color: var(--accent);
+      box-shadow: 0 0 20px color-mix(in srgb, var(--accent) 38%, transparent),
+        0 0 46px color-mix(in srgb, var(--accent) 22%, transparent),
+        inset 0 0 16px color-mix(in srgb, var(--accent) 7%, transparent);
+    }
+    .social-link:is(:hover, :focus-visible), .whoami:is(:hover, :focus-visible),
+    .back-to-top:is(:hover, :focus-visible) { color: var(--accent); }
+    .dashboard-card:is(:hover, :focus-visible) .card-icon {
+      box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 45%, transparent);
+    }
+    .tech-logo { color: var(--accent); min-width: 0; }
+    .tech-logo:is(:hover, :focus-visible) i {
+      filter: drop-shadow(0 0 10px var(--accent));
+    }
+    .tech-logo:is(:hover, :focus-visible)::after { opacity: 1; transform: translateX(-50%); }
+    .tech-logo::after { font-size: 10px; }
+    .btn { min-height: 46px; font-size: 14px; }
+    .nav-links a { font-size: 13px; }
+    .path-title { font-size: 12px; }
+    .card-description, .experience-card p, .development-note { font-size: 13px; }
+    .card-focus, .status { font-size: 11px; }
+    .notes-link, .creator-role { font-size: 13px; }
+    .creator-description { font-size: 12px; }
+    .creator-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 260px;
+      align-items: center;
+    }
+    .creator-info, .creator-info > div { min-width: 0; }
+    .whoami { justify-self: center; width: 190px; min-height: 56px; font-size: 15px; }
+    .social-link { width: 46px; height: 40px; font-size: 17px; }
+    .social-links { gap: 10px; flex-wrap: wrap; }
+    .ecosystem-box {
+      padding: 0; background: transparent; border: 0;
+      border-radius: 0; overflow: visible; text-align: left;
+    }
+    .ecosystem-box:hover { box-shadow: none; }
+    .ecosystem-box::before, .hero::before, .development-image::before { display: none; }
+    .ecosystem-logos { margin-top: 22px; }
+    .ecosystem-heading { margin: 0; font-size: 23px; font-weight: 600; }
+    .development-image { background: transparent; border: 0; padding: 0; }
+    .devops-flow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 30px 24px; }
+    .flow-stage { min-width: 0; border-top: 1px solid var(--border-hi); padding-top: 14px; }
+    .flow-stage h3 { margin: 0 0 14px; color: var(--text-sub); font-size: 13px; font-weight: 500; }
+    .flow-tools { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .tech-logo { width: 100%; cursor: pointer; }
+    .tech-logo[data-name="Linux"] { --accent: var(--green); }
+    .tech-logo[data-name="Python"], .tech-logo[data-name="AWS"],
+    .tech-logo[data-name="Grafana"] { --accent: var(--amber); }
+    .tech-logo[data-name="Git"], .tech-logo[data-name="Jenkins"],
+    .tech-logo[data-name="Prometheus"] { --accent: var(--red); }
+    .tech-logo[data-name="GitHub"], .tech-logo[data-name="Terraform"] { --accent: var(--violet); }
+    .tech-logo[data-name="Docker"], .tech-logo[data-name="Azure"],
+    .tech-logo[data-name="Kubernetes"] { --accent: var(--cyan); }
+    .tech-logo[data-name="Bash scripting"], .tech-logo[data-name="Flux"] { --accent: var(--green); }
+    .tech-logo[data-name="Ansible"] { --accent: var(--red); }
+    .tech-logo[data-name="Argo CD"] { --accent: var(--pink); }
+    .tech-logo img { width: 34px; height: 34px; object-fit: contain; }
+    .tech-logo [hidden] { display: none; }
+    .tech-logo[data-name="Flux"]::after { opacity: 1; transform: translateX(-50%); }
+    .tech-logo[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--bg)); }
+    .tech-logo[aria-pressed="true"]::after { opacity: 1; transform: translateX(-50%); }
+    .tool-description { margin-top: 28px; padding: 8px 0 8px 18px; border-left: 3px solid var(--accent); }
+    .tool-description h3 { margin: 0 0 8px; color: var(--accent); font-size: 16px; }
+    .tool-description p { margin: 0; max-width: 820px; color: var(--text-sub); font-size: 14px; line-height: 1.8; }
+    .image-placeholder {
+      min-height: 320px; aspect-ratio: 4 / 3; width: 100%;
+      border: 1px dashed var(--border-hi); border-radius: 8px;
+      flex-direction: column; gap: 16px; color: var(--text-mute);
+      background: rgba(255, 255, 255, .015); font-size: 13px;
+    }
+    .image-placeholder i { font-size: 36px; }
+    .footer-author { color: var(--cyan); }
+    .footer-divider {
+      width: min(420px, 100%); height: 1px; margin: 14px 0 10px;
+      background: linear-gradient(90deg, transparent, var(--cyan), var(--violet), var(--amber), transparent);
+    }
+    .footer-sub, .footer-copy { color: var(--text-mute); font-size: 11px; line-height: 1.8; }
+    .brand, .eyebrow, .hero h1, .section-label, .section-heading h2, .status { letter-spacing: 0; }
+    .hero h1 { font-size: 64px; }
+    section[id] { scroll-margin-top: 90px; }
+    @media (max-width: 1050px) {
+      .nav-inner { flex-wrap: wrap; padding-block: 14px; gap: 14px; }
+      .nav-links { flex-wrap: wrap; gap: 18px; }
+    }
+    @media (max-width: 800px) {
+      .devops-flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .creator-card { grid-template-columns: minmax(0, 1fr); align-items: center; }
+      .whoami { width: min(240px, 100%); }
+    }
+    @media (max-width: 700px) {
+      .nav-links { display: flex; width: 100%; gap: 12px 18px; }
+      .nav-links a { font-size: 12px; }
+      .hero h1 { font-size: 40px; }
+      .creator-card { padding: 24px 18px; }
+      .creator-info { gap: 12px; }
+      .creator-mark { width: 44px; height: 44px; }
+      section[id] { scroll-margin-top: 130px; }
+    }
+    @media (max-width: 430px) {
+      .devops-flow { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+      .hero h1 { font-size: 34px; }
+      .path-title { font-size: 11px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition: none !important; }
+      .btn:is(:hover, :focus-visible), .whoami:is(:hover, :focus-visible),
+      .social-link:is(:hover, :focus-visible), .dashboard-card:is(:hover, :focus-visible),
+      .experience-card:hover, .path-item:hover .path-icon,
+      .tech-logo:is(:hover, :focus-visible) { transform: none; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- =========================================
+       NAVIGATION
+       ========================================= -->
+
+  <header class="navbar">
+    <div class="container nav-inner">
+
+      <a href="./" class="brand">
+        <div class="brand-mark">&gt;_</div>
+        <span>Learn with <em>Sam</em></span>
+      </a>
+
+      <nav class="nav-links">
+        <a href="#home">Home</a>
+        <a href="#path">Learning Path</a>
+        <a href="#dashboards">Dashboards</a>
+        <a href="#experience">Learning Experience</a>
+        <a href="./about/index.html">About Me</a>
+      </nav>
+
+    </div>
+  </header>
+
+
+  <main>
+
+    <!-- =========================================
+         HERO
+         ========================================= -->
+
+    <section id="home" class="hero">
+      <canvas class="network-canvas" aria-hidden="true"></canvas>
+
+      <div class="container">
+
+        <div class="hero-content">
+
+          <div class="eyebrow">
+            <span class="status-dot"></span>
+            INTERACTIVE CLOUD &amp; DEVOPS LEARNING PLATFORM
+          </div>
+
+          <h1>
+            <span class="gradient">DEVOPS</span><br />
+            LEARNING HUB
+          </h1>
+
+          <p class="hero-subtitle">
+            Master Cloud &amp; DevOps through practical learning,
+            interactive dashboards, hands-on labs, real-world scenarios,
+            troubleshooting and certification preparation.
+          </p>
+
+          <div class="hero-actions">
+
+            <a href="#dashboards" class="btn btn-primary">
+              <i class="fa-solid fa-rocket"></i>
+              Explore Learning Hub
+            </a>
+
+            <a href="#path" class="btn btn-secondary">
+              <i class="fa-solid fa-route"></i>
+              View Learning Path
+            </a>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================================
+         LEARNING PATH
+         ========================================= -->
+
+    <section id="path">
+
+      <div class="container">
+
+        <div class="section-heading">
+
+          <div class="section-label">
+            01 / Learning Path
+          </div>
+
+          <h2>
+            From Linux foundations to AI-driven DevOps
+          </h2>
+
+          <p>
+            A structured progression through the technologies and practices
+            that shape modern Cloud, DevOps, infrastructure and AI engineering.
+          </p>
+
+        </div>
+
+
+        <div class="path-wrapper">
+
+          <div class="path-line"></div>
+
+          <div class="path">
+
+            <div class="path-item">
+              <div class="path-icon">🐧</div>
+              <div class="path-title">Linux</div>
+            </div>
+
+            <div class="path-item">
+              <div class="path-icon">☁️</div>
+              <div class="path-title">Cloud</div>
+            </div>
+
+            <div class="path-item">
+              <div class="path-icon">⚙️</div>
+              <div class="path-title">DevOps</div>
+            </div>
+
+            <div class="path-item">
+              <div class="path-icon">🔄</div>
+              <div class="path-title">CI/CD</div>
+            </div>
+
+            <div class="path-item">
+              <div class="path-icon">🏗️</div>
+              <div class="path-title">Terraform</div>
+            </div>
+
+            <div class="path-item">
+              <div class="path-icon">🐳</div>
+              <div class="path-title">Docker</div>
+            </div>
+
+            <div class="path-item">
+              <div class="path-icon">☸️</div>
+              <div class="path-title">Kubernetes</div>
+            </div>
+
+            <div class="path-item">
+              <div class="path-icon">🔄</div>
+              <div class="path-title">GitOps</div>
+            </div>
+
+            <div class="path-item">
+              <div class="path-icon">🤖</div>
+              <div class="path-title">AI</div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================================
+         DASHBOARDS
+         ========================================= -->
+
+    <section id="dashboards">
+
+      <div class="container">
+
+        <div class="section-heading">
+
+          <div class="section-label">
+            02 / Learning Dashboards
+          </div>
+
+          <h2>
+            Explore the learning modules
+          </h2>
+
+          <p>
+            Each dashboard focuses on a specific area of the modern
+            Cloud and DevOps ecosystem, combining practical knowledge
+            with engineering-focused learning.
+          </p>
+
+        </div>
+
+
+        <div class="dashboard-grid">
+
+
+          <!-- LINUX -->
+
+          <a
+            href="./linux/"
+            class="dashboard-card"
+            style="
+              --card-color: var(--cyan);
+              --card-glow: var(--cyan-glow);
+              --card-border: rgba(34,211,238,0.25);
+            "
+          >
+
+            <div class="card-top-line"></div>
+
+            <div class="card-header">
+
+              <div class="card-icon">🐧</div>
+
+              <div class="status soon">
+                COMING SOON
+              </div>
+
+            </div>
+
+            <div class="card-title">
+              Linux Administration
+            </div>
+
+            <div class="card-description">
+              Linux administration, networking, permissions, processes,
+              services, SSH, system troubleshooting and DevOps scenarios.
+            </div>
+
+            <div class="card-focus">
+              Focus:
+              <span>Linux • Networking • Troubleshooting</span>
+            </div>
+
+          </a>
+
+
+          <!-- AWS -->
+
+          <a
+            href="./aws/"
+            class="dashboard-card"
+            style="
+              --card-color: var(--cyan);
+              --card-glow: var(--cyan-glow);
+              --card-border: rgba(34,211,238,0.25);
+            "
+          >
+
+            <div class="card-top-line"></div>
+
+            <div class="card-header">
+
+              <div class="card-icon">☁️</div>
+
+              <div class="status soon">
+                COMING SOON
+              </div>
+
+            </div>
+
+            <div class="card-title">
+              AWS Certified Solutions Architect – Associate (SAA-C03)
+            </div>
+
+            <div class="card-description">
+              AWS compute, networking, storage, databases, IAM,
+              high availability, scalability, security and architecture.
+            </div>
+
+            <div class="card-focus">
+              Focus:
+              <span>AWS • Architecture • Solutions</span>
+            </div>
+
+          </a>
+
+
+          <!-- AZURE -->
+
+          <a
+            href="./azure900/index.html"
+            class="dashboard-card available"
+            style="
+              --card-color: var(--cyan);
+              --card-glow: var(--cyan-glow);
+              --card-border: rgba(34,211,238,0.25);
+            "
+          >
+
+            <div class="card-top-line"></div>
+
+            <div class="card-header">
+
+              <div class="card-icon">
+                ☁️
+              </div>
+
+              <div class="status available">
+                ● AVAILABLE
+              </div>
+
+            </div>
+
+            <div class="card-title">
+              AZ-900: Microsoft Azure Fundamentals
+            </div>
+
+            <div class="card-description">
+              Azure fundamentals and certification preparation covering
+              cloud concepts, architecture, services, management and governance.
+            </div>
+
+            <div class="card-focus">
+              Focus:
+              <span>Cloud Fundamentals • Azure • Certification</span>
+            </div>
+
+          </a>
+
+
+          <!-- KUBERNETES -->
+
+          <a
+            href="./kubernetes/"
+            class="dashboard-card"
+            style="
+              --card-color: var(--violet);
+              --card-glow: var(--violet-glow);
+              --card-border: rgba(167,139,250,0.25);
+            "
+          >
+
+            <div class="card-top-line"></div>
+
+            <div class="card-header">
+
+              <div class="card-icon">☸️</div>
+
+              <div class="status soon">
+                COMING SOON
+              </div>
+
+            </div>
+
+            <div class="card-title">
+              Kubernetes
+            </div>
+
+            <div class="card-description">
+              Kubernetes architecture, workloads, services, networking,
+              storage, scheduling and production troubleshooting.
+            </div>
+
+            <div class="card-focus">
+              Focus:
+              <span>Containers • Orchestration • Production</span>
+            </div>
+
+          </a>
+
+
+          <!-- DOCKER -->
+
+          <a
+            href="./docker/"
+            class="dashboard-card"
+            style="
+              --card-color: var(--violet);
+              --card-glow: var(--violet-glow);
+              --card-border: rgba(167,139,250,0.25);
+            "
+          >
+
+            <div class="card-top-line"></div>
+
+            <div class="card-header">
+
+              <div class="card-icon">🐳</div>
+
+              <div class="status soon">
+                COMING SOON
+              </div>
+
+            </div>
+
+            <div class="card-title">
+              Docker
+            </div>
+
+            <div class="card-description">
+              Containers, images, Dockerfiles, Compose, networking,
+              volumes, registries, optimization and security.
+            </div>
+
+            <div class="card-focus">
+              Focus:
+              <span>Containers • Images • Security</span>
+            </div>
+
+          </a>
+
+
+          <!-- TERRAFORM -->
+
+          <a
+            href="./terraform/"
+            class="dashboard-card"
+            style="
+              --card-color: var(--violet);
+              --card-glow: var(--violet-glow);
+              --card-border: rgba(167,139,250,0.25);
+            "
+          >
+
+            <div class="card-top-line"></div>
+
+            <div class="card-header">
+
+              <div class="card-icon">🏗️</div>
+
+              <div class="status soon">
+                COMING SOON
+              </div>
+
+            </div>
+
+            <div class="card-title">
+              Terraform
+            </div>
+
+            <div class="card-description">
+              Infrastructure as Code, providers, resources, state,
+              modules, variables and multi-cloud infrastructure automation.
+            </div>
+
+            <div class="card-focus">
+              Focus:
+              <span>IaC • Automation • AWS • Azure</span>
+            </div>
+
+          </a>
+
+
+          <!-- CI/CD -->
+
+          <a
+            href="./cicd/"
+            class="dashboard-card"
+            style="
+              --card-color: var(--violet);
+              --card-glow: var(--violet-glow);
+              --card-border: rgba(167,139,250,0.25);
+            "
+          >
+
+            <div class="card-top-line"></div>
+
+            <div class="card-header">
+
+              <div class="card-icon">🔄</div>
+
+              <div class="status soon">
+                COMING SOON
+              </div>
+
+            </div>
+
+            <div class="card-title">
+              CI/CD
+            </div>
+
+            <div class="card-description">
+              Pipeline architecture, builds, testing, artifacts, secrets,
+              deployment strategies, approvals, rollbacks and security.
+            </div>
+
+            <div class="card-focus">
+              Focus:
+              <span>Pipelines • Deployment • Automation</span>
+            </div>
+
+          </a>
+
+
+          <!-- DEVSECOPS -->
+
+          <a
+            href="./devsecops/"
+            class="dashboard-card"
+            style="
+              --card-color: var(--red);
+              --card-glow: rgba(248,113,113,0.12);
+              --card-border: rgba(248,113,113,0.25);
+            "
+          >
+
+            <div class="card-top-line"></div>
+
+            <div class="card-header">
+
+              <div class="card-icon">🔐</div>
+
+              <div class="status soon">
+                COMING SOON
+              </div>
+
+            </div>
+
+            <div class="card-title">
+              DevSecOps
+            </div>
+
+            <div class="card-description">
+              Shift-left security, SAST, DAST, SCA, secrets detection,
+              container security, IaC security and vulnerability management.
+            </div>
+
+            <div class="card-focus">
+              Focus:
+              <span>Security • SAST • Vulnerabilities</span>
+            </div>
+
+          </a>
+
+
+          <!-- GITOPS -->
+
+          <a
+            href="./gitops/"
+            class="dashboard-card"
+            style="
+              --card-color: var(--green);
+              --card-glow: rgba(52,211,153,0.12);
+              --card-border: rgba(52,211,153,0.25);
+            "
+          >
+
+            <div class="card-top-line"></div>
+
+            <div class="card-header">
+
+              <div class="card-icon">🔄</div>
+
+              <div class="status soon">
+                COMING SOON
+              </div>
+
+            </div>
+
+            <div class="card-title">
+              GitOps
+            </div>
+
+            <div class="card-description">
+              Git as the source of truth, declarative infrastructure,
+              reconciliation, drift detection and Kubernetes operations.
+            </div>
+
+            <div class="card-focus">
+              Focus:
+              <span>Git • Kubernetes • Reconciliation</span>
+            </div>
+
+          </a>
+
+
+          <!-- PLATFORM ENGINEERING -->
+
+          <a
+            href="./platform-engineering/"
+            class="dashboard-card"
+            style="
+              --card-color: var(--amber);
+              --card-glow: var(--amber-glow);
+              --card-border: rgba(251,191,36,0.25);
+            "
+          >
+
+            <div class="card-top-line"></div>
+
+            <div class="card-header">
+
+              <div class="card-icon">🏗️</div>
+
+              <div class="status soon">
+                COMING SOON
+              </div>
+
+            </div>
+
+            <div class="card-title">
+              Platform Engineering
+            </div>
+
+            <div class="card-description">
+              Internal developer platforms, self-service infrastructure,
+              golden paths, developer experience, governance and reliability.
+            </div>
+
+            <div class="card-focus">
+              Focus:
+              <span>IDPs • Developer Experience • Platforms</span>
+            </div>
+
+          </a>
+
+
+          <!-- MLOPS -->
+
+          <a
+            href="./mlops/"
+            class="dashboard-card"
+            style="
+              --card-color: var(--pink);
+              --card-glow: rgba(244,114,182,0.12);
+              --card-border: rgba(244,114,182,0.25);
+            "
+          >
+
+            <div class="card-top-line"></div>
+
+            <div class="card-header">
+
+              <div class="card-icon">🔬</div>
+
+              <div class="status soon">
+                COMING SOON
+              </div>
+
+            </div>
+
+            <div class="card-title">
+              MLOps
+            </div>
+
+            <div class="card-description">
+              ML lifecycle management, data pipelines, model deployment,
+              monitoring, drift detection, retraining and ML CI/CD.
+            </div>
+
+            <div class="card-focus">
+              Focus:
+              <span>Machine Learning • Models • Operations</span>
+            </div>
+
+          </a>
+
+
+          <!-- AGENTIC AI -->
+
+          <a
+            href="./agentic-ai/"
+            class="dashboard-card"
+            style="
+              --card-color: var(--amber);
+              --card-glow: var(--amber-glow);
+              --card-border: rgba(251,191,36,0.25);
+            "
+          >
+
+            <div class="card-top-line"></div>
+
+            <div class="card-header">
+
+              <div class="card-icon">🤖</div>
+
+              <div class="status soon">
+                COMING SOON
+              </div>
+
+            </div>
+
+            <div class="card-title">
+              Agentic AI
+            </div>
+
+            <div class="card-description">
+              AI agents, LLMs, tool use, agentic workflows, AI-assisted
+              DevOps, infrastructure automation and production AI systems.
+            </div>
+
+            <div class="card-focus">
+              Focus:
+              <span>Agents • LLMs • AI-driven DevOps</span>
+            </div>
+
+          </a>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================================
+         LEARNING EXPERIENCE
+         ========================================= -->
+
+    <section id="experience">
+
+      <div class="container">
+
+        <div class="section-heading">
+
+          <div class="section-label">
+            03 / Learning Experience
+          </div>
+
+          <h2>
+            Learn by doing, not just reading
+          </h2>
+
+          <p>
+            The hub is designed around practical engineering skills
+            that can be applied to real infrastructure and production scenarios.
+          </p>
+
+        </div>
+
+
+        <div class="experience-grid">
+
+          <div class="experience-card">
+            <div class="experience-icon">
+              <i class="fa-solid fa-table-columns"></i>
+            </div>
+
+            <h3>
+              Interactive Dashboards
+            </h3>
+
+            <p>
+              Structured topic dashboards that turn complex technologies
+              into focused, navigable learning experiences.
+            </p>
+          </div>
+
+
+          <div class="experience-card">
+            <div class="experience-icon">
+              <i class="fa-solid fa-flask"></i>
+            </div>
+
+            <h3>
+              Hands-on Labs
+            </h3>
+
+            <p>
+              Practical exercises designed around commands, infrastructure,
+              configurations and real engineering workflows.
+            </p>
+          </div>
+
+
+          <div class="experience-card">
+            <div class="experience-icon">
+              <i class="fa-solid fa-circle-question"></i>
+            </div>
+
+            <h3>
+              Scenarios &amp; Quizzes
+            </h3>
+
+            <p>
+              Scenario-based questions and quizzes designed to strengthen
+              troubleshooting and technical decision-making.
+            </p>
+          </div>
+
+
+          <div class="experience-card">
+            <div class="experience-icon">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+
+            <h3>
+              Troubleshooting
+            </h3>
+
+            <p>
+              Learn how engineers investigate failures across Linux,
+              containers, Kubernetes, networking and cloud infrastructure.
+            </p>
+          </div>
+
+
+          <div class="experience-card">
+            <div class="experience-icon">
+              <i class="fa-solid fa-certificate"></i>
+            </div>
+
+            <h3>
+              Certification Preparation
+            </h3>
+
+            <p>
+              Focused learning paths for cloud and DevOps certification
+              preparation, beginning with Azure AZ-900.
+            </p>
+          </div>
+
+
+          <div class="experience-card">
+            <div class="experience-icon">
+              <i class="fa-solid fa-arrow-trend-up"></i>
+            </div>
+
+            <h3>
+              Real-world DevOps Skills
+            </h3>
+
+            <p>
+              Connect individual technologies to the larger ecosystem
+              used in modern Cloud and DevOps engineering.
+            </p>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================================
+         CLOUD & DEVOPS ECOSYSTEM
+         ========================================= -->
+
+    <section aria-labelledby="ecosystem-heading">
+
+      <div class="container">
+
+        <div class="section-heading">
+          <div class="section-label">04 / Cloud &amp; DevOps Ecosystem</div>
+          <h2 id="ecosystem-heading">From source code to running systems</h2>
+        </div>
+        <div class="ecosystem-box">
+
+          <div class="devops-flow">
+            <div class="flow-stage">
+              <h3>01 / Foundation</h3>
+              <div class="flow-tools">
+                <button type="button" class="tech-logo" data-name="Linux"><i class="devicon-linux-plain" aria-hidden="true"></i></button>
+                <button type="button" class="tech-logo" data-name="Bash scripting"><i class="devicon-bash-plain" aria-hidden="true"></i></button>
+              </div>
+            </div>
+            <div class="flow-stage">
+              <h3>02 / Code &amp; collaborate</h3>
+              <div class="flow-tools">
+                <button type="button" class="tech-logo" data-name="Python"><i class="devicon-python-plain" aria-hidden="true"></i></button>
+                <button type="button" class="tech-logo" data-name="Git"><i class="devicon-git-plain" aria-hidden="true"></i></button>
+                <button type="button" class="tech-logo" data-name="GitHub"><i class="devicon-github-original" aria-hidden="true"></i></button>
+              </div>
+            </div>
+            <div class="flow-stage">
+              <h3>03 / Build &amp; test</h3>
+              <div class="flow-tools">
+                <button type="button" class="tech-logo" data-name="Jenkins"><i class="devicon-jenkins-line" aria-hidden="true"></i></button>
+                <button type="button" class="tech-logo" data-name="Docker"><i class="devicon-docker-plain" aria-hidden="true"></i></button>
+              </div>
+            </div>
+            <div class="flow-stage">
+              <h3>04 / Provision infrastructure</h3>
+              <div class="flow-tools">
+                <button type="button" class="tech-logo" data-name="Terraform"><i class="devicon-terraform-plain" aria-hidden="true"></i></button>
+                <button type="button" class="tech-logo" data-name="Ansible"><i class="devicon-ansible-plain" aria-hidden="true"></i></button>
+              </div>
+            </div>
+            <div class="flow-stage">
+              <h3>05 / Deploy &amp; operate</h3>
+              <div class="flow-tools">
+                <button type="button" class="tech-logo" data-name="Kubernetes"><i class="devicon-kubernetes-plain" aria-hidden="true"></i></button>
+                <button type="button" class="tech-logo" data-name="AWS"><i class="devicon-amazonwebservices-plain-wordmark" aria-hidden="true"></i></button>
+                <button type="button" class="tech-logo" data-name="Azure"><i class="devicon-azure-plain" aria-hidden="true"></i></button>
+              </div>
+            </div>
+            <div class="flow-stage">
+              <h3>06 / GitOps delivery</h3>
+              <div class="flow-tools">
+                <button type="button" class="tech-logo" data-name="Argo CD"><i class="devicon-argocd-plain" aria-hidden="true"></i></button>
+                <button type="button" class="tech-logo" data-name="Flux" title="Flux"><img src="https://fluxcd.io/img/flux-icon.svg" alt="" /><i class="fa-solid fa-code-branch" aria-hidden="true" hidden></i></button>
+              </div>
+            </div>
+            <div class="flow-stage">
+              <h3>07 / Observe &amp; improve</h3>
+              <div class="flow-tools">
+                <button type="button" class="tech-logo" data-name="Prometheus"><i class="devicon-prometheus-original" aria-hidden="true"></i></button>
+                <button type="button" class="tech-logo" data-name="Grafana"><i class="devicon-grafana-plain" aria-hidden="true"></i></button>
+              </div>
+            </div>
+          </div>
+          <div id="tool-description" class="tool-description" hidden aria-live="polite" aria-atomic="true">
+            <h3 id="tool-name"></h3>
+            <p id="tool-purpose"></p>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================================
+         CONTINUOUS DEVELOPMENT
+         ========================================= -->
+
+    <section>
+
+      <div class="container">
+
+        <div class="development-grid">
+          <div class="development-image">
+            <img src="./assets/images/devops-ecosystem.png" width="1536" height="1024"
+              alt="DevOps ecosystem: the plan, code, build, test, release, deploy, operate and monitor cycle, surrounded by cloud, automation, infrastructure, security and container tools." />
+          </div>
+          <div class="development-content">
+
+            <div class="section-heading">
+
+              <div class="section-label">
+                05 / Continuous Development
+              </div>
+
+              <h2>
+                A learning hub that keeps evolving
+              </h2>
+
+              <p>
+                New dashboards, labs, scenarios and learning material
+                will continue to expand the platform across the Cloud
+                and DevOps ecosystem.
+              </p>
+
+            </div>
+
+
+            <div class="development-note">
+
+              <strong>
+                Important:
+              </strong>
+
+              This dashboard does not provide complete learning
+              documents or detailed theory notes.
+
+              <br /><br />
+
+              It is highly recommended to study the theory, read the notes,
+              perform hands-on labs and build practical understanding
+              before attempting the quizzes and challenges.
+
+              <br />
+
+              <a
+                href="https://observant-quarter-d86.notion.site/DevOps-Clouds-My-Learning-Journey-7175327a3d6a43168e56f8c965000c2d"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="notes-link"
+              >
+                <i class="fa-solid fa-book-open"></i>
+                Read my learning notes →
+              </a>
+
+            </div>
+
+          </div>
+
+
+
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================================
+         CREATOR
+         ========================================= -->
+
+    <section id="creator" class="creator">
+
+      <div class="container">
+
+        <div class="creator-card">
+
+
+          <div class="creator-info">
+
+            <div class="creator-mark">
+              SU
+            </div>
+
+
+            <div>
+
+              <div class="creator-name">
+                Saima Usman
+              </div>
+
+              <div class="creator-role">
+                Certified DevOps &amp; Multi-Cloud Platform Engineer
+              </div>
+
+              <div class="creator-description">
+                Focused on Cloud Architecture, DevOps Engineering,
+                Platform Engineering, CI/CD, GitOps, Kubernetes,
+                Infrastructure as Code, MLOps, DevSecOps and AI-driven DevOps.
+              </div>
+
+
+              <!-- SOCIAL CONNECTIONS -->
+
+              <div class="social-links">
+
+                <a
+                  href="https://www.linkedin.com/in/saima-usman/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="social-link"
+                  aria-label="LinkedIn"
+                  title="LinkedIn"
+                >
+                  <i class="fa-brands fa-linkedin-in"></i>
+                </a>
+
+
+                <a
+                  href="https://github.com/Saima-Devops/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="social-link"
+                  aria-label="GitHub"
+                  title="GitHub"
+                >
+                  <i class="fa-brands fa-github"></i>
+                </a>
+
+
+                <a
+                  href="https://www.youtube.com/@sam_DevOps"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="social-link"
+                  aria-label="YouTube"
+                  title="YouTube"
+                >
+                  <i class="fa-brands fa-youtube"></i>
+                </a>
+
+
+                <a
+                  href="https://medium.com/@saimausman.dxb"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="social-link"
+                  aria-label="Medium"
+                  title="Medium"
+                >
+                  <i class="fa-brands fa-medium"></i>
+                </a>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <a
+            href="./about/index.html"
+            class="whoami"
+          >
+            WhoAmI
+          </a>
+
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+
+  <!-- =========================================
+       FOOTER
+       ========================================= -->
+
+  <footer>
+    <canvas class="network-canvas" data-flow="left" data-nodes="12" aria-hidden="true"></canvas>
+
+    <div class="container footer-inner">
+
+      <div class="footer-main">
+        DevOps Learning Hub <span class="footer-author">- created by Saima Usman</span>
+      </div>
+
+      <div class="footer-divider" aria-hidden="true"></div>
+
+      <div class="footer-sub">
+        Interactive Dashboards • Labs • Scenarios • Troubleshooting • Certification Prep
+      </div>
+
+      <div class="footer-copy">
+        © 2026 Saima Usman. All Rights Reserved.
+      </div>
+
+    </div>
+
+  </footer>
+
+
+  <!-- =========================================
+       BACK TO TOP
+       ========================================= -->
+
+  <button
+    id="backToTop"
+    class="back-to-top"
+    aria-label="Back to top"
+    title="Back to top"
+  >
+    <i class="fa-solid fa-arrow-up"></i>
+  </button>
+
+
+  <!-- =========================================
+       JAVASCRIPT
+       ========================================= -->
+
+  <script>
+
+    const toolPurposes = {
+      "Bash scripting": "Bash scripts combine shell commands into repeatable workflows. Engineers use them to automate Linux administration, environment setup and pipeline tasks.",
+      Ansible: "Ansible automates configuration management and application deployment using playbooks. Teams use it to configure servers consistently and repeat operational tasks across environments.",
+      "Argo CD": "Argo CD delivers Kubernetes applications using Git as the source of truth. It compares the live cluster with declared configuration and can synchronize changes to keep deployments aligned.",
+      Flux: "Flux continuously reconciles Kubernetes workloads with configuration stored in Git and other sources. Its controllers automate GitOps delivery, including Helm releases and image update workflows.",
+      Linux: "Linux provides the operating-system foundation for many servers and containers. Engineers use its shell, permissions, networking and services to run and troubleshoot workloads.",
+      Python: "Python turns repetitive engineering tasks into reusable scripts. It connects APIs, processes data and automates checks across build pipelines and infrastructure.",
+      Git: "Git tracks changes to application code and infrastructure definitions. Branches and commits let teams collaborate, review changes and return to earlier versions.",
+      GitHub: "GitHub hosts Git repositories and brings code review, pull requests and collaboration together. Teams can also use GitHub Actions to automate builds, tests and deployments.",
+      Jenkins: "Jenkins automates continuous integration and delivery pipelines. It connects source changes to repeatable build, test and deployment steps.",
+      Docker: "Docker packages applications and their dependencies into container images. Those images provide a consistent runtime across development, testing and deployment environments.",
+      Terraform: "Terraform defines infrastructure as code and plans changes before applying them. It provisions cloud resources through providers so environments can be versioned and reproduced.",
+      AWS: "AWS supplies cloud compute, storage, networking and managed services. Teams use these resources to host applications and build infrastructure that can scale with demand.",
+      Azure: "Azure supplies cloud infrastructure and managed application services. Teams use it to provision environments, deploy workloads and integrate identity, security and monitoring.",
+      Kubernetes: "Kubernetes orchestrates containerized applications across a cluster. It manages scheduling, service discovery, scaling and rollouts to keep workloads operating.",
+      Prometheus: "Prometheus collects and stores time-series metrics from applications and infrastructure. Queries and alerting rules help teams detect failures and understand system behavior.",
+      Grafana: "Grafana visualizes metrics, logs and other telemetry from connected data sources. Dashboards and alerts help teams investigate incidents and track service health."
+    };
+    const toolDescription = document.getElementById("tool-description");
+    const toolButtons = document.querySelectorAll(".tech-logo");
+    const fluxImage = document.querySelector('.tech-logo[data-name="Flux"] img');
+    function showFluxFallback() {
+      fluxImage.hidden = true;
+      fluxImage.nextElementSibling.hidden = false;
+    }
+    fluxImage.addEventListener("error", showFluxFallback);
+    if (fluxImage.complete && fluxImage.naturalWidth === 0) showFluxFallback();
+    toolButtons.forEach(function (button) {
+      button.setAttribute("aria-label", button.dataset.name);
+      button.setAttribute("aria-controls", "tool-description");
+      button.setAttribute("aria-pressed", "false");
+      button.addEventListener("click", function () {
+        const wasSelected = button.getAttribute("aria-pressed") === "true";
+        toolButtons.forEach(function (item) { item.setAttribute("aria-pressed", "false"); });
+        toolDescription.hidden = wasSelected;
+        if (wasSelected) return;
+        button.setAttribute("aria-pressed", "true");
+        document.getElementById("tool-name").textContent = button.dataset.name;
+        document.getElementById("tool-purpose").textContent = toolPurposes[button.dataset.name];
+        toolDescription.style.setProperty("--accent", getComputedStyle(button).getPropertyValue("--accent"));
+      });
+    });
+
+    /*
+      Back to Top
+    */
+
+    const backToTop = document.getElementById("backToTop");
+
+    window.addEventListener("scroll", function () {
+
+      if (window.scrollY > 500) {
+        backToTop.classList.add("show");
+      } else {
+        backToTop.classList.remove("show");
+      }
+
+    });
+
+    backToTop.addEventListener("click", function () {
+
+      window.scrollTo({
+        top: 0,
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"
+      });
+
+    });
+
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,45 @@
+# Local secrets and credentials
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+
+# Dependencies, build output and caches
+node_modules/
+dist/
+build/
+.cache/
+__pycache__/
+*.py[cod]
+
+# Local editor and OS metadata
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+
+# Logs and browser test reports
+*.log
+playwright-report/
+test-results/
+
+# Machine-specific verification helpers and generated previews
+/verify.cjs
+/verify-about.cjs
+/preview-*.png
+/development-preview.png
+/resume-source-preview.png
+/about/preview-*.png
+/about/intro-*.png
+/about/projects-*.png
+/about/contact-*.png
+/about/flow-*.png
+/about/hub-*.png
+/about/dashboards-*.png
+/about/development-*.png
