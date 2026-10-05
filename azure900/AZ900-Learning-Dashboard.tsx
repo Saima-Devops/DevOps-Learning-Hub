@@ -776,18 +776,14 @@ const PRACTICE_PLATFORMS = [
 // ─── SITE FOOTER ─────────────────────────────────────────────────────────────
 function SiteFooter() {
   return (
-    <div style={{ padding: "6px 20px 22px", fontFamily: "'Poppins', sans-serif" }}>
-      <div style={{ height: "1px", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent)", marginBottom: "14px" }} />
-      <div style={{ textAlign: "center", fontSize: "12px", color: T.textMute, lineHeight: "1.9" }}>
-        © {new Date().getFullYear()} <span style={{ color: T.text, fontWeight: 600 }}>Saima Usman</span>
-        <span style={{ color: T.textDim }}> · </span>
-        A passionate DevOps &amp; MLOps engineer
-        <br />
-        <span style={{ color: T.textDim, fontSize: "11px" }}>
-          All rights reserved. Unofficial study aid, not affiliated with Microsoft. Microsoft Azure is a trademark of Microsoft Corporation.
-        </span>
-      </div>
-    </div>
+    <footer style={{padding:"26px var(--azure-gutter) 30px",fontFamily:"'Poppins', sans-serif",borderTop:"1px solid rgba(255,255,255,.12)",textAlign:"center"}}>
+      <p style={{fontSize:"12px",color:T.textMute,lineHeight:1.9,margin:"0 0 14px"}}>
+        &copy; 2026 <strong style={{color:"#FFFFFF",fontWeight:700}}>Saima Usman</strong>. All Rights Reserved.
+      </p>
+      <p style={{fontSize:"11px",color:T.textMute,lineHeight:1.9,margin:0}}>
+        Note: Unofficial study aid, not affiliated with Microsoft. Microsoft Azure is a trademark of Microsoft Corporation.
+      </p>
+    </footer>
   );
 }
 
@@ -1204,6 +1200,16 @@ const QUESTION_BANK = [
     "GA is the stage for production use. Private and public previews come before it."),
 ];
 
+function SiteHeader() {
+  return (
+    <header className="site-navigation azure-header">
+      <div className="site-navigation-inner">
+        <a className="site-brand" href="../index.html" aria-label="Learn with Sam - return to Learning Hub"><span className="site-brand-mark">&gt;_</span><span>Learn with <em>Sam</em></span></a>
+      </div>
+    </header>
+  );
+}
+
 export default function AZ900Dashboard() {
   const [activePhase, setActivePhase] = useState(0);
   const [activeTab, setActiveTab] = useState("topics");
@@ -1225,6 +1231,36 @@ export default function AZ900Dashboard() {
   const [modal, setModal] = useState(null);                // null | "submit" | "quit"
   const [reviewFilter, setReviewFilter] = useState("wrong");
   const [history, setHistory] = useState(loadHistory);
+
+  const [pendingNavigation, setPendingNavigation] = useState(null);
+  useEffect(() => {
+    const restoreNavigation = () => {
+      const id = location.hash.slice(1);
+      if (["azure-overview", "azure-learning", "azure-exam"].includes(id)) {
+        setView(id === "azure-exam" ? "exam" : "dashboard");
+        setActiveScenario(null);
+        setPendingNavigation({id});
+      }
+    };
+    restoreNavigation();
+    window.addEventListener("popstate", restoreNavigation);
+    window.addEventListener("hashchange", restoreNavigation);
+    return () => {
+      window.removeEventListener("popstate", restoreNavigation);
+      window.removeEventListener("hashchange", restoreNavigation);
+    };
+  }, []);
+  useEffect(() => {
+    if (!pendingNavigation) return;
+    const frame = requestAnimationFrame(() => {
+      const target = document.getElementById(pendingNavigation.id);
+      if (target) {
+        target.style.scrollMarginTop = (document.querySelector(".site-navigation").offsetHeight + 32) + "px";
+        target.scrollIntoView({behavior:"auto",block:"start"});
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [pendingNavigation, view, activeScenario]);
 
   function openExam() {
     setView("exam");
@@ -1456,7 +1492,7 @@ export default function AZ900Dashboard() {
       </button>
     );
     return (
-      <div style={{ padding: "20px", maxWidth: "980px", margin: "0 auto", boxSizing: "border-box" }}>
+      <div style={{ padding: "20px var(--azure-gutter)", width: "100%", margin: 0, boxSizing: "border-box" }}>
         <button onClick={() => setView("dashboard")} style={backBtn}>← Back to Dashboard</button>
         <div style={{ display: "flex", alignItems: "center", gap: "12px", margin: "16px 0 8px", flexWrap: "wrap" }}>
           <div style={{ fontSize: "34px" }}>📝</div>
@@ -1565,8 +1601,8 @@ export default function AZ900Dashboard() {
     const sbtn = (c, filled) => ({ background: filled ? `rgba(${c},0.18)` : "transparent", border: `1px solid rgb(${c})`, color: `rgb(${c})`, padding: "7px 14px", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: 600, fontFamily: font, whiteSpace: "nowrap" });
     return (
       <div>
-        <div style={{ position: "sticky", top: 0, zIndex: 20, background: T.surface, borderBottom: `1px solid ${T.border}`, padding: "10px 16px" }}>
-          <div style={{ maxWidth: "980px", margin: "0 auto", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+        <div style={{ position: "sticky", top: 68, zIndex: 20, background: T.surface, borderBottom: `1px solid ${T.border}`, padding: "10px var(--azure-gutter)" }}>
+          <div style={{ width: "100%", margin: 0, display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: "170px" }}>
               <div style={{ fontSize: "10px", color: T.textDim, letterSpacing: "1.5px", fontWeight: 600 }}>{EXAM_MODES[ex.mode].label.toUpperCase()}</div>
               <div style={{ fontSize: "14px", fontWeight: 600 }}>
@@ -1584,7 +1620,7 @@ export default function AZ900Dashboard() {
           </div>
         </div>
 
-        <div style={{ padding: "18px 20px", maxWidth: "980px", margin: "0 auto", boxSizing: "border-box", display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "flex-start" }}>
+        <div style={{ padding: "18px var(--azure-gutter)", width: "100%", margin: 0, boxSizing: "border-box", display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "flex-start" }}>
           <div style={{ flex: "3 1 360px", minWidth: 0 }}>
             <div style={{ background: T.card, border: "1px solid rgba(255,255,255,0.09)", borderRadius: "14px", padding: "18px" }}>
               <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "12px", flexWrap: "wrap" }}>
@@ -1701,7 +1737,7 @@ export default function AZ900Dashboard() {
     );
     const act = (c, filled) => ({ background: filled ? `rgba(${c},0.18)` : "transparent", border: `1px solid rgb(${c})`, color: `rgb(${c})`, padding: "9px 16px", borderRadius: "10px", cursor: "pointer", fontSize: "13px", fontWeight: 600, fontFamily: font });
     return (
-      <div style={{ padding: "20px", maxWidth: "980px", margin: "0 auto", boxSizing: "border-box" }}>
+      <div style={{ padding: "20px var(--azure-gutter)", width: "100%", margin: 0, boxSizing: "border-box" }}>
         <button onClick={() => setView("dashboard")} style={backBtn}>← Back to Dashboard</button>
 
         {/* Headline */}
@@ -1901,7 +1937,8 @@ export default function AZ900Dashboard() {
     return (
       <>
         <style>{POPPINS}</style>
-        <div style={{ background: T.bg, fontFamily: font, color: T.text, overflowX: "clip" }}>
+        <SiteHeader />
+        <div id="azure-exam" style={{ background: T.bg, fontFamily: font, color: T.text, overflowX: "clip" }}>
           {!exam ? renderExamMenu() : exam.stage === "running" ? renderExamRunning() : renderExamResults()}
           <SiteFooter />
         </div>
@@ -1920,8 +1957,9 @@ export default function AZ900Dashboard() {
     return (
       <>
         <style>{POPPINS}</style>
-        <div style={{ background: T.bg, fontFamily: font, color: T.text, overflowX: "clip" }}>
-          <div style={{ background: `rgba(${scRGB},0.06)`, borderBottom: `1px solid rgba(${scRGB},0.25)`, padding: "16px 20px" }}>
+        <SiteHeader />
+        <div id="azure-learning" style={{ background: T.bg, fontFamily: font, color: T.text, overflowX: "clip" }}>
+          <div style={{ background: `rgba(${scRGB},0.06)`, borderBottom: `1px solid rgba(${scRGB},0.25)`, padding: "16px var(--azure-gutter)" }}>
             <button onClick={() => setActiveScenario(null)}
               style={{ background: "transparent", border: `1px solid rgba(255,255,255,0.15)`, color: T.textSub, padding: "6px 14px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontFamily: font, marginBottom: "12px" }}>
               ← Back
@@ -1953,7 +1991,7 @@ export default function AZ900Dashboard() {
             </div>
           </div>
 
-          <div style={{ padding: "20px", maxWidth: "860px", margin: "0 auto", boxSizing: "border-box" }}>
+          <div style={{ padding: "20px var(--azure-gutter)", width: "100%", margin: 0, boxSizing: "border-box" }}>
             {scen.steps.map((step, si) => {
               const done = stepDone(scen.id, si);
               return (
@@ -2027,6 +2065,7 @@ export default function AZ900Dashboard() {
   return (
     <>
       <style>{POPPINS}</style>
+        <SiteHeader />
       <div style={{ background: T.bg, fontFamily: font, color: T.text, overflowX: "clip" }}>
 
         {/* Glossary Modal */}
@@ -2053,8 +2092,8 @@ export default function AZ900Dashboard() {
         )}
 
         {/* Header */}
-        <div style={{ borderBottom: `1px solid rgba(${rgb},0.2)`, padding: "20px 20px 16px", background: `rgba(${rgb},0.04)` }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px" }}>
+        <div id="azure-overview" style={{ borderBottom: `1px solid rgba(${rgb},0.2)`, padding: "20px var(--azure-gutter) 16px", background: `rgba(${rgb},0.04)` }}>
+          <div className="azure-summary-layout" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px" }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "5px", flexWrap: "wrap" }}>
                 <span style={{ background: `rgba(${rgb},0.18)`, border: `1px solid rgba(${rgb},0.4)`, color, fontSize: "10px", fontWeight: 600, letterSpacing: "1.5px", padding: "3px 10px", borderRadius: "20px" }}>AZ-900 PREP · v1.0</span>
@@ -2106,7 +2145,7 @@ export default function AZ900Dashboard() {
 
         {/* Cheatsheet */}
         {showCheatsheet && (
-          <div style={{ background: `rgba(167,139,250,0.06)`, borderBottom: `1px solid rgba(167,139,250,0.18)`, padding: "16px 20px" }}>
+          <div style={{ background: `rgba(167,139,250,0.06)`, borderBottom: `1px solid rgba(167,139,250,0.18)`, padding: "16px var(--azure-gutter)" }}>
             <p style={{ color: T.violet, fontSize: "11px", letterSpacing: "1.5px", margin: "0 0 12px", fontWeight: 600 }}>// ESSENTIAL AZURE CLI CHEATSHEET</p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: "10px" }}>
               {CHEATSHEET.map(cat => (
@@ -2123,7 +2162,7 @@ export default function AZ900Dashboard() {
 
         {/* Links */}
         {showLinks && (
-          <div style={{ background: `rgba(251,191,36,0.04)`, borderBottom: `1px solid rgba(251,191,36,0.18)`, padding: "16px 20px" }}>
+          <div style={{ background: `rgba(251,191,36,0.04)`, borderBottom: `1px solid rgba(251,191,36,0.18)`, padding: "16px var(--azure-gutter)" }}>
             <p style={{ color: T.amber, fontSize: "11px", letterSpacing: "1.5px", margin: "0 0 12px", fontWeight: 600 }}>// AZ-900 STUDY RESOURCES</p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: "10px" }}>
               {AZ_LINKS.map(cat => (
@@ -2142,7 +2181,7 @@ export default function AZ900Dashboard() {
         )}
 
         {/* Main Content */}
-        <div style={{ padding: "20px", boxSizing: "border-box" }}>
+        <div id="azure-learning" style={{ padding: "20px var(--azure-gutter)", boxSizing: "border-box" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
               <div style={{ width: "44px", height: "44px", borderRadius: "12px", background: `rgba(${rgb},0.15)`, border: `2px solid rgba(${rgb},0.4)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px", flexShrink: 0 }}>{phase.icon}</div>

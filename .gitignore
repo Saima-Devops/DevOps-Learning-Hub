@@ -32,6 +32,7 @@ test-results/
 # Machine-specific verification helpers and generated previews
 /verify.cjs
 /verify-about.cjs
+/verify-navigation.cjs
 /preview-*.png
 /development-preview.png
 /resume-source-preview.png
@@ -43,3 +44,6 @@ test-results/
 /about/hub-*.png
 /about/dashboards-*.png
 /about/development-*.png
+/about/azure-nav-*.png
+/about/azure-footer-*.png
+/about/azure-exam-*.png

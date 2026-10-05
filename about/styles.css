@@ -1,4 +1,9 @@
 /* Expanded profile highlights and a non-interactive learning status. */
+.container.footer-inner{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:20px}
+.footer-quote{margin:0 0 10px;font-size:13px;font-weight:500;color:var(--green)}
+.footer-copyright{margin:0;font-size:11px;color:var(--muted);line-height:1.9}
+.footer-copyright strong{color:#FFFFFF;font-weight:700}
+@media(max-width:720px){.container.footer-inner{grid-template-columns:minmax(0,1fr)}.footer-copyright{padding-right:42px}}
 nav a{position:relative;font-weight:500;transition:color .2s ease,text-shadow .2s ease}
 nav a::after{content:"";position:absolute;left:50%;bottom:-7px;width:0;height:1px;transform:translateX(-50%);background:var(--cyan);box-shadow:0 0 8px rgba(34,211,238,.7);transition:width .2s ease}
 nav a:hover,nav a:focus-visible{color:var(--cyan);text-shadow:0 0 12px rgba(34,211,238,.3)}
