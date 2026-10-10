@@ -19,3 +19,5 @@
 @media(prefers-reduced-motion:reduce){.site-links a,.site-links a::after{transition:none}}
 @media(max-width:760px){.azure-summary-layout{flex-direction:column}.azure-summary-layout>div:first-child{width:100%}}
 @media print{.site-navigation,.page-back-to-top{display:none!important}}
+.footer-profile{color:#FFFFFF;font-weight:700;text-decoration:none}
+.footer-profile:is(:hover,:focus-visible){color:#22D3EE;text-decoration:none}

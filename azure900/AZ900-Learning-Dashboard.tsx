@@ -497,7 +497,7 @@ const PHASES = [
           {cmd:"az extension add --name connectedmachine",desc:"Installs the Azure Arc-enabled servers CLI extension."},
         ],
         resources:[
-          {title:"Describe cloud models",url:"https://learn.microsoft.com/training/modules/describe-cloud-computing/"},
+          {title:"Describe cloud models",url:"https://learn.microsoft.com/training/modules/describe-cloud-compute/"},
           {title:"Azure Arc overview",url:"https://learn.microsoft.com/azure/azure-arc/overview"},
         ]},
     ],
@@ -778,7 +778,7 @@ function SiteFooter() {
   return (
     <footer style={{padding:"26px var(--azure-gutter) 30px",fontFamily:"'Poppins', sans-serif",borderTop:"1px solid rgba(255,255,255,.12)",textAlign:"center"}}>
       <p style={{fontSize:"12px",color:T.textMute,lineHeight:1.9,margin:"0 0 14px"}}>
-        &copy; 2026 <strong style={{color:"#FFFFFF",fontWeight:700}}>Saima Usman</strong>. All Rights Reserved.
+        &copy; 2026 <a className="footer-profile" href="../about/index.html">Saima Usman</a>. All Rights Reserved.
       </p>
       <p style={{fontSize:"11px",color:T.textMute,lineHeight:1.9,margin:0}}>
         Note: Unofficial study aid, not affiliated with Microsoft. Microsoft Azure is a trademark of Microsoft Corporation.

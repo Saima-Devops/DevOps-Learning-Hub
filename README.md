@@ -463,34 +463,6 @@ New dashboards and learning content may be added over time.
 
 The [About Me page](./about/index.html) introduces Saima Usman's career transition, engineering toolkit, credentials and projects. SecureGate AI is the featured project. The printer icon opens the [original resume PDF](./assets/documents/saima-usman-resume.pdf).
 
-## Project Structure
-
-```text
-index.html                          Learning Hub homepage
-about/                              About Me page, styles and script
-azure900/index.html                 Runnable Azure dashboard
-azure900/AZ900-Learning-Dashboard.tsx Editable Azure source
-assets/js/network-background.js     Shared network animation
-assets/images/devops-ecosystem.png   Ecosystem infographic
-assets/documents/saima-usman-resume.pdf Original resume
-```
-
-## Local Preview
-
-Open `index.html` directly in a browser. There is no install or build step. The Azure dashboard loads React and Babel from CDNs; fonts and icon libraries also require an internet connection.
-
-Keep `about/`, `azure900/` and `assets/` beside the root `index.html` so relative links and images work. The Azure dashboard stores mock exam history in the visitor's browser.
-
-## Publishing on GitHub Pages
-
-1. Push the site files and asset folders to your GitHub repository.
-2. In repository **Settings > Pages**, choose **Deploy from a branch**.
-3. Select the branch containing this site and the **/ (root)** folder, then save.
-4. Use the URL shown by GitHub Pages after deployment completes.
-
-For this repository, the intended homepage is [DevOps Learning Hub](https://saima-devops.github.io/DevOps-Learning-Hub/), with the Azure dashboard at [azure900/](https://saima-devops.github.io/DevOps-Learning-Hub/azure900/) and the profile at [about/](https://saima-devops.github.io/DevOps-Learning-Hub/about/). These addresses depend on publishing successfully to that repository.
-
-The Azure dashboard is part of the same deployment; it does not require a separate repository or build. See [GitHub's publishing-source documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site) for configuration details.
 
 ## Repository Hygiene
 
