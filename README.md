@@ -56,7 +56,7 @@ The dashboards are organized around the technologies and practices that form the
 | Dashboard | Focus | Status |
 | --- | --- | --- |
 | Linux Administration | Linux, networking and troubleshooting | Coming soon |
-| AWS Certified Solutions Architect - Associate (SAA-C03) | AWS architecture and certification preparation | Coming soon |
+| [AWS Certified Solutions Architect - Associate (SAA-C03)](./AWS-SAA-Dashboard/index.html) | AWS lessons, labs, architecture scenarios, quizzes and mock exams | Available |
 | [AZ-900: Microsoft Azure Fundamentals](./azure900/index.html) | Azure lessons, labs, quizzes and mock exams | Available |
 | Kubernetes | Workloads, orchestration and production troubleshooting | Coming soon |
 | Docker | Containers, images and security | Coming soon |
@@ -190,7 +190,7 @@ Explore AWS infrastructure and architecture concepts relevant to Cloud and DevOp
 * Solutions Architecture
 * Exam preparation
 
-**Status: Coming soon.**
+**Status: Available.** [Open AWS SAA dashboard](./AWS-SAA-Dashboard/index.html).
 
 </details>
 

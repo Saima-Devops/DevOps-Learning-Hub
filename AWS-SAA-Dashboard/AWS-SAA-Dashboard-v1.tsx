@@ -1,0 +1,3277 @@
+import { useEffect, useState } from "react";
+
+const T = {
+  bg:"#0B0F1A", surface:"#131929", card:"#1A2235",
+  text:"#F0F4FF", textSub:"#B8C5D6", textMute:"#7A8FA6", textDim:"#4E6278",
+  cyan:"#22D3EE", violet:"#A78BFA", amber:"#FBBF24",
+  green:"#34D399", red:"#F87171", pink:"#F472B6",
+};
+const phaseRGB = { foundation:"34,211,238", intermediate:"167,139,250", advanced:"251,191,36" };
+const POPPINS = "@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap');";
+const GLOBAL_CSS = `
+  * { box-sizing: border-box; }
+`;
+
+const GLOSSARY = {
+  "Region":"A separate geographic area of AWS, such as eu-west-1 (Ireland) or me-central-1 (UAE). Each Region has multiple Availability Zones and is isolated from the others. Data stays in a Region unless you move it.",
+  "Availability Zone":"One or more discrete data centres with independent power, cooling and networking inside a Region. Spreading resources across two or more AZs is the basic high-availability pattern.",
+  "Edge Location":"A point of presence used by CloudFront, Route 53 and Global Accelerator to serve users with low latency. There are far more edge locations than Regions.",
+  "Well-Architected Framework":"AWS's design guidance built on six pillars: operational excellence, security, reliability, performance efficiency, cost optimisation and sustainability.",
+  "shared responsibility model":"AWS secures the cloud itself (hardware, facilities, the virtualisation layer); you secure what you put in it (data, IAM, OS patching on EC2, security groups, encryption choices).",
+  "IAM":"Identity and Access Management. Controls who (users, roles, services) can do what on which AWS resources. Global, free, and deny-by-default.",
+  "IAM user":"A long-term identity with its own credentials. Best practice is to avoid them for people (use IAM Identity Center) and for applications (use roles).",
+  "IAM role":"An identity with permissions but no long-term credentials. Users, services and other accounts assume it to get temporary credentials from STS. Use roles for EC2, Lambda and cross-account access.",
+  "IAM policy":"A JSON document of Allow or Deny statements (Effect, Action, Resource, Condition). An explicit Deny always wins over any Allow.",
+  "root user":"The email identity that created the account. It has unrestricted access. Enable MFA, delete its access keys and use it only for the few tasks that require it.",
+  "MFA":"Multi-factor authentication: a password plus a second factor such as an authenticator app or security key. Mandatory for the root user and privileged access.",
+  "STS":"Security Token Service. Issues temporary credentials when a role is assumed (AssumeRole, AssumeRoleWithWebIdentity, AssumeRoleWithSAML).",
+  "identity federation":"Letting users sign in with an external identity provider (SAML 2.0, OIDC, Active Directory) and receive temporary AWS credentials instead of IAM users.",
+  "IAM Identity Center":"The recommended way to give workforce users single sign-on access to multiple AWS accounts, using permission sets and an identity source such as Entra ID or Active Directory.",
+  "AWS Organizations":"Groups many AWS accounts under a management account, with organisational units (OUs), consolidated billing and service control policies.",
+  "service control policy":"An Organizations policy that sets the maximum permissions for accounts in an OU. An SCP never grants permissions; it only limits what IAM policies can allow.",
+  "Control Tower":"Sets up and governs a multi-account landing zone automatically, with guardrails (controls), a log archive account and an audit account.",
+  "EC2":"Elastic Compute Cloud: resizable virtual servers (instances). You manage the OS, patching and software; AWS manages the hardware.",
+  "AMI":"Amazon Machine Image: a template containing the OS and software used to launch instances. AMIs are Regional and can be copied to other Regions.",
+  "instance type":"The hardware profile of an instance. Families: general purpose (M, T), compute optimised (C), memory optimised (R, X), storage optimised (I, D) and accelerated (P, G, Inf).",
+  "user data":"A script passed at launch that runs on first boot, typically to install software or pull configuration.",
+  "On-Demand":"Pay per second or hour with no commitment. Best for short, spiky or unpredictable workloads that cannot be interrupted.",
+  "Reserved Instance":"A 1- or 3-year commitment to a specific instance configuration in exchange for a large discount. Largely superseded by Savings Plans for new purchases.",
+  "Savings Plans":"A 1- or 3-year commitment to a dollar amount of compute per hour. Compute Savings Plans apply across EC2, Fargate and Lambda; EC2 Instance Savings Plans give the deepest discount for one instance family in one Region.",
+  "Spot Instance":"Spare EC2 capacity at up to 90% off On-Demand. AWS can reclaim it with a two-minute warning, so use it for fault-tolerant, flexible work such as batch jobs and CI.",
+  "Dedicated Host":"A physical server dedicated to you, giving visibility of sockets and cores for bring-your-own-licence software and compliance.",
+  "placement group":"Controls how instances are placed: cluster (low latency in one AZ, HPC), spread (separate hardware for critical instances) and partition (large distributed systems like Hadoop or Kafka).",
+  "EBS":"Elastic Block Store: network-attached block volumes for EC2. A volume lives in one Availability Zone and persists independently of the instance.",
+  "gp3":"General-purpose SSD EBS volume with a 3,000 IOPS / 125 MB/s baseline at any size, and IOPS and throughput you can raise independently of capacity.",
+  "io2":"Provisioned IOPS SSD EBS volume for critical databases needing very high, consistent IOPS and high durability. Supports Multi-Attach.",
+  "instance store":"Disks physically attached to the host. Very fast, but data is lost when the instance stops or terminates. Use for caches, buffers and scratch data.",
+  "EBS snapshot":"An incremental, point-in-time backup of an EBS volume stored in S3 by AWS. Snapshots are Regional and can be copied across Regions and accounts.",
+  "S3":"Simple Storage Service: object storage designed for eleven nines (99.999999999%) of durability, unlimited capacity and strong read-after-write consistency.",
+  "bucket policy":"A resource-based JSON policy attached to an S3 bucket, used for cross-account access, enforcing encryption or TLS, or restricting access to a VPC endpoint.",
+  "S3 storage class":"The tier an object is stored in: Standard, Intelligent-Tiering, Standard-IA, One Zone-IA, Glacier Instant Retrieval, Glacier Flexible Retrieval and Glacier Deep Archive.",
+  "S3 Glacier":"Archive storage classes. Instant Retrieval returns data in milliseconds; Flexible Retrieval in minutes to hours; Deep Archive (the cheapest) within 12 to 48 hours.",
+  "lifecycle rule":"An S3 rule that transitions objects to cheaper storage classes after a number of days, or expires (deletes) them.",
+  "S3 versioning":"Keeps every version of every object, protecting against accidental overwrite and deletion. Required for replication and for Object Lock.",
+  "S3 Replication":"Copies objects automatically to another bucket in the same Region (SRR) or another Region (CRR). Needs versioning on both buckets.",
+  "presigned URL":"A time-limited URL that grants temporary access to a private S3 object using the signer's permissions.",
+  "S3 Transfer Acceleration":"Speeds up long-distance uploads to S3 by routing them through the nearest CloudFront edge location.",
+  "EFS":"Elastic File System: a managed, elastic NFS file system for Linux that many instances across multiple AZs can mount at the same time.",
+  "FSx":"Managed third-party file systems: FSx for Windows File Server (SMB, Active Directory), FSx for Lustre (HPC, S3 integration), FSx for NetApp ONTAP and FSx for OpenZFS.",
+  "VPC":"Virtual Private Cloud: your logically isolated network in a Region, with your own IP range, subnets, route tables and gateways.",
+  "subnet":"A range of IPs inside a VPC that lives in exactly one Availability Zone. A public subnet has a route to an Internet Gateway; a private subnet does not.",
+  "route table":"Rules that decide where traffic from a subnet goes, such as 0.0.0.0/0 to an Internet Gateway or a NAT Gateway.",
+  "Internet Gateway":"Connects a VPC to the internet for resources that have public IPs. Horizontally scaled and highly available by AWS.",
+  "NAT Gateway":"Lets instances in private subnets start outbound internet connections without being reachable from the internet. It is zonal, so deploy one per AZ for resilience.",
+  "security group":"A stateful virtual firewall attached to instances and other resources. It has allow rules only, and return traffic is allowed automatically.",
+  "network ACL":"A stateless firewall at the subnet level with numbered allow and deny rules evaluated in order. Return traffic must be allowed explicitly.",
+  "Elastic IP":"A static public IPv4 address you can move between instances. All public IPv4 addresses are charged hourly.",
+  "Elastic Load Balancing":"Managed load balancers that distribute traffic across targets in multiple AZs and stop sending traffic to unhealthy ones.",
+  "Application Load Balancer":"A layer 7 (HTTP/HTTPS) load balancer with path-, host- and header-based routing, and Lambda, IP and container targets.",
+  "Network Load Balancer":"A layer 4 (TCP/UDP/TLS) load balancer for extreme performance and very low latency, with a static IP per AZ.",
+  "Gateway Load Balancer":"Deploys and scales third-party virtual appliances such as firewalls and intrusion detection, transparently, using the GENEVE protocol.",
+  "target group":"The set of targets (instances, IPs, Lambda functions) a load balancer routes to, with its own health check settings.",
+  "Auto Scaling group":"Keeps a desired number of EC2 instances running across AZs, replaces unhealthy ones and scales in and out with policies.",
+  "launch template":"The versioned blueprint an Auto Scaling group uses to launch instances: AMI, instance type, security groups, user data and so on.",
+  "scaling policy":"How an Auto Scaling group changes capacity: target tracking (keep CPU at 50%), step, scheduled, or predictive scaling.",
+  "RDS":"Relational Database Service: managed MySQL, PostgreSQL, MariaDB, Oracle, SQL Server and Db2, with automated backups, patching and Multi-AZ.",
+  "Multi-AZ":"An RDS deployment with a synchronous standby in another AZ and automatic failover. It is for availability, not for read scaling (except Multi-AZ DB clusters, whose standbys can serve reads).",
+  "read replica":"An asynchronously replicated copy of a database used to scale reads. It can be in another Region and can be promoted to a standalone database.",
+  "Aurora":"AWS's MySQL- and PostgreSQL-compatible database. Storage is kept as six copies across three AZs and grows automatically, with up to 15 low-lag replicas.",
+  "Aurora Serverless":"An Aurora configuration that scales capacity automatically with demand, suited to variable or unpredictable workloads.",
+  "RDS Proxy":"A managed connection pool in front of RDS or Aurora. It absorbs connection storms, for example from Lambda, and speeds up failover.",
+  "DynamoDB":"A serverless key-value and document NoSQL database with single-digit-millisecond performance at any scale. Capacity is on-demand or provisioned.",
+  "DAX":"DynamoDB Accelerator: an in-memory cache for DynamoDB that cuts read latency to microseconds without application logic changes.",
+  "DynamoDB Streams":"A time-ordered log of item changes in a table, commonly used to trigger Lambda functions.",
+  "global table":"A DynamoDB table replicated across Regions with active-active writes in every Region.",
+  "ElastiCache":"Managed in-memory caching with Redis OSS, Valkey or Memcached. Reduces database load and latency, and stores session state.",
+  "Route 53":"AWS's highly available DNS service, domain registrar and health checker.",
+  "routing policy":"How Route 53 answers queries: simple, weighted, latency, failover, geolocation, geoproximity, multivalue answer or IP-based.",
+  "alias record":"A Route 53 record that points to an AWS resource (ALB, CloudFront, S3 website). It works at the zone apex and queries to AWS targets are free.",
+  "health check":"A periodic test of whether an endpoint is healthy. Route 53 uses it for failover; load balancers use it to choose targets.",
+  "CloudFront":"AWS's content delivery network. It caches content at edge locations, terminates TLS close to users and protects origins.",
+  "origin access control":"OAC restricts an S3 origin so that only a specific CloudFront distribution can read it, keeping the bucket private.",
+  "Global Accelerator":"Gives an application two static anycast IPs and routes users over the AWS backbone to the nearest healthy endpoint. Works for TCP and UDP, with fast Regional failover.",
+  "SQS":"Simple Queue Service: a fully managed message queue that decouples producers from consumers. Standard queues are at-least-once; FIFO queues preserve order and deduplicate.",
+  "visibility timeout":"How long a received SQS message stays hidden from other consumers. If it is not deleted in time, it becomes visible and is processed again.",
+  "dead-letter queue":"A queue that receives messages that failed processing too many times, so they can be inspected without blocking the main queue.",
+  "SNS":"Simple Notification Service: pub/sub messaging that pushes each message to all subscribers (SQS, Lambda, HTTP, email, SMS).",
+  "fan-out":"Publishing a message once to SNS so it is delivered to several SQS queues or functions for parallel, independent processing.",
+  "EventBridge":"A serverless event bus that routes events from AWS services, SaaS apps and your code to targets using rules, plus a scheduler.",
+  "Kinesis Data Streams":"Real-time streaming of large data volumes in shards, with retention for replay and multiple consumers reading in order.",
+  "Amazon Data Firehose":"Fully managed delivery of streaming data to S3, Redshift, OpenSearch and others, with buffering and optional transformation. Formerly Kinesis Data Firehose.",
+  "Step Functions":"Serverless workflow orchestration that coordinates Lambda functions and AWS services with state, retries and branching.",
+  "Lambda":"Serverless functions that run code in response to events. Billed per request and duration, scales automatically, maximum run time 15 minutes.",
+  "API Gateway":"A managed front door for REST, HTTP and WebSocket APIs, with authorisation, throttling, caching and usage plans.",
+  "ECS":"Elastic Container Service: AWS's container orchestrator. Tasks run on EC2 instances you manage or on Fargate.",
+  "Fargate":"Serverless compute for containers on ECS and EKS. You define CPU and memory per task and never manage servers.",
+  "EKS":"Elastic Kubernetes Service: a managed Kubernetes control plane, with workers on EC2 or Fargate.",
+  "ECR":"Elastic Container Registry: a private registry for container images, with scanning and lifecycle policies.",
+  "KMS":"Key Management Service: creates and controls encryption keys used by most AWS services, with every use logged to CloudTrail.",
+  "envelope encryption":"Encrypting data with a data key, then encrypting that data key with a KMS key. It avoids sending large data to KMS.",
+  "Secrets Manager":"Stores secrets such as database passwords and rotates them automatically, with built-in rotation for RDS, Aurora and Redshift.",
+  "Parameter Store":"Part of Systems Manager. Stores configuration values and secrets (SecureString) hierarchically; the standard tier is free but has no built-in rotation.",
+  "ACM":"AWS Certificate Manager: issues free public TLS certificates and renews them automatically for use with ELB, CloudFront and API Gateway.",
+  "WAF":"Web Application Firewall: filters HTTP requests (SQL injection, cross-site scripting, rate limits, geo-blocking) on CloudFront, ALB, API Gateway and AppSync.",
+  "Shield":"DDoS protection. Shield Standard is automatic and free; Shield Advanced adds enhanced protection, a response team and cost protection.",
+  "GuardDuty":"Intelligent threat detection that analyses CloudTrail, VPC Flow Logs, DNS logs and more for malicious activity.",
+  "Macie":"Uses machine learning to discover and protect sensitive data such as personal information in S3.",
+  "Inspector":"Automated vulnerability scanning of EC2 instances, container images in ECR and Lambda functions.",
+  "Cognito":"Customer identity for web and mobile apps. User pools handle sign-up and sign-in; identity pools hand out temporary AWS credentials.",
+  "CloudTrail":"Records API calls in your account (who did what, when, from where) for auditing and investigation.",
+  "AWS Config":"Records resource configurations over time and evaluates them against rules, for example 'S3 buckets must be encrypted'.",
+  "CloudWatch":"Metrics, logs, alarms and dashboards for AWS resources and applications.",
+  "VPC endpoint":"Private connectivity from a VPC to AWS services without an Internet Gateway or NAT Gateway.",
+  "gateway endpoint":"A free VPC endpoint type for S3 and DynamoDB, added as a target in route tables.",
+  "interface endpoint":"A VPC endpoint powered by PrivateLink: an elastic network interface with a private IP in your subnet, for most AWS services. Billed hourly and per GB.",
+  "PrivateLink":"Exposes a service privately to other VPCs or accounts through interface endpoints, without peering or overlapping-CIDR concerns.",
+  "VPC peering":"A private one-to-one connection between two VPCs. It is not transitive and CIDR ranges must not overlap.",
+  "Transit Gateway":"A regional hub that connects many VPCs and on-premises networks with transitive routing, replacing meshes of peering connections.",
+  "Site-to-Site VPN":"An encrypted IPsec connection over the internet between your network and a VPC. Quick to set up; throughput and latency vary with the internet.",
+  "Direct Connect":"A dedicated private network connection from your premises to AWS with consistent performance. Takes weeks to provision and is not encrypted by default.",
+  "RPO":"Recovery Point Objective: how much data loss, measured in time, is acceptable. An RPO of 15 minutes means backups or replication at least every 15 minutes.",
+  "RTO":"Recovery Time Objective: how long the service may be down before it is restored.",
+  "backup and restore":"The cheapest DR strategy: back up data, then rebuild everything after a disaster. RPO and RTO in hours.",
+  "pilot light":"A DR strategy where core data is replicated and minimal infrastructure is ready but switched off, then scaled up during a disaster. RTO in tens of minutes.",
+  "warm standby":"A DR strategy with a scaled-down but fully working copy of production always running, scaled up on failover. RTO in minutes.",
+  "multi-site active-active":"A DR strategy where full production runs in two or more Regions at once. Near-zero RPO and RTO, highest cost.",
+  "AWS Backup":"Centralised, policy-based backup for EBS, RDS, DynamoDB, EFS, FSx, S3 and more, with cross-Region and cross-account copies and vault lock.",
+  "DMS":"Database Migration Service: migrates databases with minimal downtime using continuous replication. Pair with the Schema Conversion Tool for different engines.",
+  "DataSync":"Online transfer service that moves large amounts of file data between on-premises storage (NFS, SMB) and S3, EFS or FSx, with scheduling and verification.",
+  "Snowball":"A rugged physical device for offline transfer of terabytes to petabytes when the network is too slow, with optional edge compute.",
+  "Storage Gateway":"Hybrid storage that lets on-premises applications use cloud storage: S3 File Gateway, FSx File Gateway, Volume Gateway and Tape Gateway.",
+  "Athena":"Serverless interactive SQL queries directly on data in S3. Pay per data scanned, so partitioning and columnar formats cut cost.",
+  "Glue":"Serverless data integration: crawlers discover schemas into the Data Catalog, and ETL jobs transform data.",
+  "Redshift":"A petabyte-scale columnar data warehouse for analytics (OLAP). Redshift Spectrum queries data in S3.",
+  "EMR":"Managed big data clusters running Spark, Hadoop, Hive and Presto.",
+  "OpenSearch Service":"Managed OpenSearch (successor to Elasticsearch) for log analytics and full-text search.",
+  "QuickSight":"Serverless business intelligence dashboards and visualisations.",
+  "Lake Formation":"Builds and secures data lakes on S3 with fine-grained access control at database, table, column and row level.",
+  "Cost Explorer":"Visualises and forecasts AWS spend and usage, and gives Savings Plans and Reserved Instance recommendations.",
+  "AWS Budgets":"Alerts you, or runs actions, when actual or forecast cost or usage exceeds thresholds you set.",
+  "Compute Optimizer":"Uses utilisation data to recommend right-sized EC2 instances, Auto Scaling groups, EBS volumes, Lambda functions and more.",
+  "Trusted Advisor":"Automated checks for cost, security, fault tolerance, performance and service limits.",
+  "Cost and Usage Report":"The most detailed billing data, delivered to S3 for analysis with Athena or QuickSight.",
+  "tagging":"Key-value labels on resources, for example Project=Billing. Activated as cost allocation tags, they break down the bill by team or project.",
+};
+
+const CHEATSHEET_TABS = [
+  { id:"iam", label:"IAM & Accounts", cats:[
+    {cat:"Identity",cmds:[
+      {cmd:"aws sts get-caller-identity",desc:"Who am I? Shows the account, ARN and user ID in use"},
+      {cmd:"aws configure --profile dev",desc:"Store credentials and default Region for a named profile"},
+      {cmd:"aws sso login --profile dev",desc:"Sign in through IAM Identity Center"},
+      {cmd:"aws iam list-roles --query 'Roles[].RoleName'",desc:"List role names only, using a JMESPath query"},
+      {cmd:"aws sts assume-role --role-arn <arn> --role-session-name audit",desc:"Get temporary credentials for a role"},
+      {cmd:"aws iam generate-credential-report",desc:"Report on every user's passwords, keys and MFA"},
+    ]},
+    {cat:"Policies",cmds:[
+      {cmd:"aws iam create-role --role-name ec2-s3 --assume-role-policy-document file://trust.json",desc:"Create a role with a trust policy"},
+      {cmd:"aws iam attach-role-policy --role-name ec2-s3 --policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess",desc:"Attach a managed policy"},
+      {cmd:"aws iam create-instance-profile --instance-profile-name ec2-s3",desc:"Instance profile: the container that passes a role to EC2"},
+      {cmd:"aws iam simulate-principal-policy --policy-source-arn <arn> --action-names s3:GetObject",desc:"Test whether a principal is allowed an action"},
+      {cmd:"aws organizations list-accounts",desc:"Accounts in your organisation"},
+      {cmd:"aws organizations attach-policy --policy-id <scp> --target-id <ou>",desc:"Apply a service control policy to an OU"},
+    ]},
+    {cat:"Audit",cmds:[
+      {cmd:"aws cloudtrail lookup-events --lookup-attributes AttributeKey=EventName,AttributeValue=DeleteBucket",desc:"Who deleted a bucket?"},
+      {cmd:"aws iam list-mfa-devices --user-name alice",desc:"Check MFA is configured"},
+      {cmd:"aws accessanalyzer list-findings --analyzer-arn <arn>",desc:"Resources shared outside your account"},
+      {cmd:"aws guardduty list-findings --detector-id <id>",desc:"Threat findings"},
+    ]},
+  ]},
+  { id:"ec2", label:"EC2 & Scaling", cats:[
+    {cat:"Instances",cmds:[
+      {cmd:"aws ec2 run-instances --image-id <ami> --instance-type t3.micro --subnet-id <sn> --security-group-ids <sg> --iam-instance-profile Name=ec2-s3",desc:"Launch an instance with a role"},
+      {cmd:"aws ec2 describe-instances --filters Name=instance-state-name,Values=running --query 'Reservations[].Instances[].[InstanceId,InstanceType]' --output table",desc:"Running instances as a table"},
+      {cmd:"aws ec2 stop-instances --instance-ids <id>",desc:"Stop (EBS data kept, instance store lost)"},
+      {cmd:"aws ec2 create-image --instance-id <id> --name web-v2",desc:"Create an AMI from an instance"},
+      {cmd:"aws ssm start-session --target <id>",desc:"Shell without SSH keys or open port 22"},
+      {cmd:"aws ec2 describe-spot-price-history --instance-types c6i.large --max-items 5",desc:"Recent Spot prices"},
+    ]},
+    {cat:"Auto Scaling",cmds:[
+      {cmd:"aws ec2 create-launch-template --launch-template-name web --launch-template-data file://lt.json",desc:"Blueprint for scaled instances"},
+      {cmd:"aws autoscaling create-auto-scaling-group --auto-scaling-group-name web-asg --launch-template LaunchTemplateName=web --min-size 2 --max-size 6 --vpc-zone-identifier 'sn-a,sn-b' --target-group-arns <tg>",desc:"Multi-AZ group behind a load balancer"},
+      {cmd:"aws autoscaling put-scaling-policy --auto-scaling-group-name web-asg --policy-name cpu50 --policy-type TargetTrackingScaling --target-tracking-configuration file://cpu50.json",desc:"Keep average CPU near a target"},
+      {cmd:"aws autoscaling start-instance-refresh --auto-scaling-group-name web-asg",desc:"Roll out a new launch template version"},
+    ]},
+    {cat:"Load Balancers & EBS",cmds:[
+      {cmd:"aws elbv2 create-load-balancer --name web-alb --subnets sn-a sn-b --security-groups <sg>",desc:"Create an ALB in two AZs"},
+      {cmd:"aws elbv2 describe-target-health --target-group-arn <tg>",desc:"Why is a target unhealthy?"},
+      {cmd:"aws ec2 create-volume --availability-zone eu-west-1a --size 100 --volume-type gp3 --iops 6000",desc:"gp3 volume with extra IOPS"},
+      {cmd:"aws ec2 create-snapshot --volume-id <vol> --description nightly",desc:"Point-in-time EBS backup"},
+      {cmd:"aws ec2 copy-snapshot --source-region eu-west-1 --source-snapshot-id <snap> --region eu-central-1",desc:"Copy a snapshot to another Region"},
+    ]},
+  ]},
+  { id:"s3", label:"S3 & Storage", cats:[
+    {cat:"Objects",cmds:[
+      {cmd:"aws s3 mb s3://my-unique-bucket-2026 --region eu-west-1",desc:"Make a bucket"},
+      {cmd:"aws s3 cp report.pdf s3://bucket/reports/ --storage-class STANDARD_IA",desc:"Upload into a specific storage class"},
+      {cmd:"aws s3 sync ./site s3://bucket --delete",desc:"Mirror a folder, removing deleted files"},
+      {cmd:"aws s3 presign s3://bucket/file.zip --expires-in 3600",desc:"Temporary download link for one hour"},
+      {cmd:"aws s3 ls s3://bucket --recursive --summarize --human-readable",desc:"Object count and total size"},
+    ]},
+    {cat:"Bucket Settings",cmds:[
+      {cmd:"aws s3api put-bucket-versioning --bucket b --versioning-configuration Status=Enabled",desc:"Turn on versioning"},
+      {cmd:"aws s3api put-public-access-block --bucket b --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true",desc:"Block all public access"},
+      {cmd:"aws s3api put-bucket-lifecycle-configuration --bucket b --lifecycle-configuration file://lc.json",desc:"Transitions and expirations"},
+      {cmd:"aws s3api put-bucket-encryption --bucket b --server-side-encryption-configuration file://sse-kms.json",desc:"Default encryption with KMS"},
+      {cmd:"aws s3api put-bucket-replication --bucket b --replication-configuration file://crr.json",desc:"Cross-Region replication"},
+    ]},
+    {cat:"File & Transfer",cmds:[
+      {cmd:"aws efs create-file-system --performance-mode generalPurpose --throughput-mode elastic --encrypted",desc:"Encrypted, elastic EFS file system"},
+      {cmd:"sudo mount -t efs <fs-id>:/ /mnt/efs",desc:"Mount EFS with the EFS mount helper"},
+      {cmd:"aws datasync start-task-execution --task-arn <arn>",desc:"Run a DataSync transfer"},
+      {cmd:"aws backup start-backup-job --backup-vault-name vault --resource-arn <arn> --iam-role-arn <role>",desc:"On-demand AWS Backup job"},
+    ]},
+  ]},
+  { id:"vpc", label:"VPC & Networking", cats:[
+    {cat:"Build a VPC",cmds:[
+      {cmd:"aws ec2 create-vpc --cidr-block 10.0.0.0/16",desc:"New VPC"},
+      {cmd:"aws ec2 create-subnet --vpc-id <vpc> --cidr-block 10.0.1.0/24 --availability-zone eu-west-1a",desc:"Subnet in one AZ"},
+      {cmd:"aws ec2 create-internet-gateway && aws ec2 attach-internet-gateway --vpc-id <vpc> --internet-gateway-id <igw>",desc:"Internet access for public subnets"},
+      {cmd:"aws ec2 create-nat-gateway --subnet-id <public-sn> --allocation-id <eip>",desc:"Outbound internet for private subnets"},
+      {cmd:"aws ec2 create-route --route-table-id <rt> --destination-cidr-block 0.0.0.0/0 --gateway-id <igw>",desc:"Default route to the IGW"},
+    ]},
+    {cat:"Security",cmds:[
+      {cmd:"aws ec2 authorize-security-group-ingress --group-id <sg-app> --protocol tcp --port 8080 --source-group <sg-alb>",desc:"Allow only the ALB's security group"},
+      {cmd:"aws ec2 create-network-acl-entry --network-acl-id <acl> --rule-number 100 --protocol tcp --port-range From=443,To=443 --cidr-block 0.0.0.0/0 --rule-action allow --ingress",desc:"Numbered NACL rule"},
+      {cmd:"aws ec2 create-flow-logs --resource-type VPC --resource-ids <vpc> --traffic-type REJECT --log-destination-type s3 --log-destination <bucket-arn>",desc:"Log rejected traffic"},
+    ]},
+    {cat:"Connectivity",cmds:[
+      {cmd:"aws ec2 create-vpc-endpoint --vpc-id <vpc> --service-name com.amazonaws.eu-west-1.s3 --route-table-ids <rt>",desc:"Free gateway endpoint for S3"},
+      {cmd:"aws ec2 create-vpc-endpoint --vpc-endpoint-type Interface --vpc-id <vpc> --service-name com.amazonaws.eu-west-1.secretsmanager --subnet-ids <sn> --private-dns-enabled",desc:"Interface endpoint (PrivateLink)"},
+      {cmd:"aws ec2 create-vpc-peering-connection --vpc-id <a> --peer-vpc-id <b>",desc:"Peer two VPCs"},
+      {cmd:"aws ec2 create-transit-gateway-vpc-attachment --transit-gateway-id <tgw> --vpc-id <vpc> --subnet-ids <sn>",desc:"Attach a VPC to Transit Gateway"},
+      {cmd:"aws route53 list-hosted-zones",desc:"DNS zones in Route 53"},
+    ]},
+  ]},
+  { id:"db", label:"Databases", cats:[
+    {cat:"RDS & Aurora",cmds:[
+      {cmd:"aws rds create-db-instance --db-instance-identifier app --engine postgres --db-instance-class db.t4g.medium --allocated-storage 50 --multi-az --storage-encrypted --manage-master-user-password --master-username admin",desc:"Encrypted Multi-AZ PostgreSQL with the password in Secrets Manager"},
+      {cmd:"aws rds create-db-instance-read-replica --db-instance-identifier app-ro --source-db-instance-identifier app",desc:"Read replica for read scaling"},
+      {cmd:"aws rds reboot-db-instance --db-instance-identifier app --force-failover",desc:"Test Multi-AZ failover"},
+      {cmd:"aws rds restore-db-instance-to-point-in-time --source-db-instance-identifier app --target-db-instance-identifier app-restore --restore-time 2026-10-01T10:00:00Z",desc:"Point-in-time restore (to a new instance)"},
+      {cmd:"aws rds create-db-snapshot --db-instance-identifier app --db-snapshot-identifier pre-upgrade",desc:"Manual snapshot"},
+    ]},
+    {cat:"DynamoDB",cmds:[
+      {cmd:"aws dynamodb create-table --table-name Orders --attribute-definitions AttributeName=pk,AttributeType=S --key-schema AttributeName=pk,KeyType=HASH --billing-mode PAY_PER_REQUEST",desc:"On-demand table"},
+      {cmd:"aws dynamodb update-continuous-backups --table-name Orders --point-in-time-recovery-specification PointInTimeRecoveryEnabled=true",desc:"Enable point-in-time recovery"},
+      {cmd:"aws dynamodb update-time-to-live --table-name Sessions --time-to-live-specification Enabled=true,AttributeName=expires",desc:"Expire items automatically"},
+      {cmd:"aws dynamodb query --table-name Orders --key-condition-expression 'pk = :p' --expression-attribute-values '{\":p\":{\"S\":\"cust#42\"}}'",desc:"Query by partition key"},
+    ]},
+    {cat:"Caching",cmds:[
+      {cmd:"aws elasticache create-replication-group --replication-group-id sessions --engine redis --cache-node-type cache.t4g.small --num-node-groups 1 --replicas-per-node-group 1 --automatic-failover-enabled",desc:"Redis with a replica and failover"},
+      {cmd:"aws elasticache describe-replication-groups",desc:"Cache clusters and endpoints"},
+    ]},
+  ]},
+  { id:"serverless", label:"Serverless & Messaging", cats:[
+    {cat:"Lambda & API",cmds:[
+      {cmd:"aws lambda create-function --function-name thumb --runtime python3.12 --handler app.handler --role <role-arn> --zip-file fileb://app.zip",desc:"Deploy a function"},
+      {cmd:"aws lambda invoke --function-name thumb --payload file://event.json out.json --cli-binary-format raw-in-base64-out",desc:"Test invoke"},
+      {cmd:"aws lambda put-function-concurrency --function-name thumb --reserved-concurrent-executions 50",desc:"Reserve (and cap) concurrency"},
+      {cmd:"aws apigatewayv2 create-api --name orders --protocol-type HTTP --target <lambda-arn>",desc:"Quick-create an HTTP API for a function"},
+    ]},
+    {cat:"Queues & Topics",cmds:[
+      {cmd:"aws sqs create-queue --queue-name orders.fifo --attributes FifoQueue=true,ContentBasedDeduplication=true",desc:"FIFO queue with deduplication"},
+      {cmd:"aws sqs receive-message --queue-url <url> --wait-time-seconds 20",desc:"Long polling (fewer empty responses)"},
+      {cmd:"aws sns create-topic --name order-events",desc:"Topic for fan-out"},
+      {cmd:"aws sns subscribe --topic-arn <arn> --protocol sqs --notification-endpoint <queue-arn>",desc:"Subscribe a queue to a topic"},
+      {cmd:"aws events put-rule --name nightly --schedule-expression 'cron(0 2 * * ? *)'",desc:"EventBridge scheduled rule"},
+    ]},
+    {cat:"Containers",cmds:[
+      {cmd:"aws ecr get-login-password | docker login --username AWS --password-stdin <acct>.dkr.ecr.<region>.amazonaws.com",desc:"Authenticate Docker to ECR"},
+      {cmd:"aws ecs create-service --cluster prod --service-name api --task-definition api:3 --desired-count 2 --launch-type FARGATE --network-configuration file://net.json",desc:"Run a Fargate service"},
+      {cmd:"aws ecs update-service --cluster prod --service api --force-new-deployment",desc:"Redeploy the latest image"},
+      {cmd:"aws eks update-kubeconfig --name prod-cluster",desc:"Configure kubectl for EKS"},
+    ]},
+  ]},
+  { id:"ops", label:"Monitoring & Cost", cats:[
+    {cat:"CloudWatch",cmds:[
+      {cmd:"aws cloudwatch put-metric-alarm --alarm-name high-cpu --metric-name CPUUtilization --namespace AWS/EC2 --statistic Average --period 300 --threshold 80 --comparison-operator GreaterThanThreshold --evaluation-periods 2 --alarm-actions <sns-arn> --dimensions Name=InstanceId,Value=<id>",desc:"Alarm to SNS on sustained high CPU"},
+      {cmd:"aws logs tail /aws/lambda/thumb --follow",desc:"Live-tail a log group"},
+      {cmd:"aws logs put-retention-policy --log-group-name /app --retention-in-days 30",desc:"Stop paying to keep logs forever"},
+    ]},
+    {cat:"Cost",cmds:[
+      {cmd:"aws ce get-cost-and-usage --time-period Start=2026-09-01,End=2026-10-01 --granularity MONTHLY --metrics UnblendedCost --group-by Type=DIMENSION,Key=SERVICE",desc:"Last month's cost by service"},
+      {cmd:"aws budgets create-budget --account-id <acct> --budget file://budget.json --notifications-with-subscribers file://notify.json",desc:"Budget with email alerts"},
+      {cmd:"aws compute-optimizer get-ec2-instance-recommendations",desc:"Right-sizing suggestions"},
+      {cmd:"aws ce get-savings-plans-purchase-recommendation --savings-plans-type COMPUTE_SP --term-in-years ONE_YEAR --payment-option NO_UPFRONT --lookback-period-in-days THIRTY_DAYS",desc:"Savings Plan recommendation"},
+    ]},
+    {cat:"Governance",cmds:[
+      {cmd:"aws configservice describe-compliance-by-config-rule",desc:"Which Config rules are failing"},
+      {cmd:"aws resourcegroupstaggingapi get-resources --tag-filters Key=Project,Values=billing",desc:"Everything tagged for a project"},
+      {cmd:"aws kms create-key --description app-data && aws kms enable-key-rotation --key-id <id>",desc:"Customer managed key with rotation"},
+      {cmd:"aws secretsmanager rotate-secret --secret-id prod/db",desc:"Rotate a secret now"},
+    ]},
+  ]},
+];
+
+const SCENARIOS = [
+  // ── FOUNDATION 5 ────────────────────────────────────────────────────────────
+  {id:"secure-account",phase:"foundation",title:"Lock Down a New AWS Account",subtitle:"Root, MFA, audit trail and a budget alarm",emoji:"🔒",duration:"~30 min",difficulty:"Beginner",examWeight:"Critical",
+   goal:"Take a brand-new account to a safe baseline: protected root user, no long-term admin keys, an organisation-wide audit trail and an alert before costs surprise you.",concepts:["Root user","MFA","IAM Identity Center","CloudTrail","AWS Budgets"],
+   steps:[
+    {title:"Protect the root user",context:"Do these in the console while signed in as root, then sign out and never use root for daily work.",cmds:[
+      {cmd:"# Console: Account menu → Security credentials → Assign MFA device",why:"The root user can do anything, including closing the account. MFA is the single most important control."},
+      {cmd:"aws iam get-account-summary --query 'SummaryMap.AccountMFAEnabled'",why:"Returns 1 when root MFA is on. AccountAccessKeysPresent should be 0, meaning root has no access keys."},
+    ]},
+    {title:"Create day-to-day admin access",cmds:[
+      {cmd:"# Console: IAM Identity Center → Enable → Users → add yourself → Permission set: AdministratorAccess",why:"Identity Center gives short-lived credentials through single sign-on, replacing IAM users with long-term access keys."},
+      {cmd:"aws configure sso && aws sso login --profile admin",why:"The CLI then uses temporary credentials that expire automatically."},
+      {cmd:"aws sts get-caller-identity --profile admin",why:"Confirms you are using an assumed role, not root."},
+    ]},
+    {title:"Record every API call",cmds:[
+      {cmd:"aws s3 mb s3://audit-logs-<account-id>",why:"A dedicated bucket for log files. Lock it down further with a bucket policy and Object Lock in production."},
+      {cmd:"aws cloudtrail create-trail --name org-trail --s3-bucket-name audit-logs-<account-id> --is-multi-region-trail --enable-log-file-validation",why:"A multi-Region trail captures activity everywhere; log file validation lets you prove logs were not altered."},
+      {cmd:"aws cloudtrail start-logging --name org-trail",why:"Trails do not record until logging is started."},
+    ]},
+    {title:"Get warned before the bill grows",cmds:[
+      {cmd:"aws budgets create-budget --account-id <account-id> --budget '{\"BudgetName\":\"monthly\",\"BudgetLimit\":{\"Amount\":\"50\",\"Unit\":\"USD\"},\"TimeUnit\":\"MONTHLY\",\"BudgetType\":\"COST\"}' --notifications-with-subscribers file://notify.json",why:"AWS Budgets emails you when actual or forecast spend crosses a threshold, for example 80% of 50 USD."},
+      {cmd:"aws guardduty create-detector --enable",why:"Turns on threat detection, which analyses CloudTrail, VPC Flow Logs and DNS logs for suspicious activity."},
+    ]},
+   ]},
+  {id:"static-site",phase:"foundation",title:"Host a Static Website on S3 and CloudFront",subtitle:"Private bucket, OAC, HTTPS and a custom domain",emoji:"🌍",duration:"~40 min",difficulty:"Beginner",examWeight:"High",
+   goal:"Serve a static site worldwide over HTTPS from a private S3 bucket, with CloudFront as the only way in and your own domain name.",concepts:["S3","CloudFront","Origin access control","ACM","Route 53 alias"],
+   steps:[
+    {title:"Create a private bucket and upload the site",cmds:[
+      {cmd:"aws s3 mb s3://www-example-site --region eu-west-1",why:"Bucket names are globally unique. Block Public Access is on by default, which is what we want."},
+      {cmd:"aws s3 sync ./public s3://www-example-site",why:"Uploads only new or changed files."},
+    ]},
+    {title:"Get a free TLS certificate",context:"CloudFront only uses certificates from ACM in us-east-1 (N. Virginia), whichever Region your bucket is in.",cmds:[
+      {cmd:"aws acm request-certificate --domain-name www.example.com --validation-method DNS --region us-east-1",why:"ACM issues and renews public certificates for free. DNS validation renews automatically."},
+      {cmd:"aws acm describe-certificate --certificate-arn <arn> --region us-east-1 --query 'Certificate.Status'",why:"Wait for ISSUED after adding the validation CNAME to your hosted zone."},
+    ]},
+    {title:"Create the distribution with origin access control",cmds:[
+      {cmd:"aws cloudfront create-origin-access-control --origin-access-control-config Name=site-oac,SigningProtocol=sigv4,SigningBehavior=always,OriginAccessControlOriginType=s3",why:"OAC lets CloudFront sign requests to S3, so the bucket can stay private."},
+      {cmd:"aws cloudfront create-distribution --distribution-config file://dist.json",why:"dist.json sets the S3 origin with the OAC ID, the alias www.example.com, the ACM certificate, redirect-to-HTTPS and index.html as the default root object."},
+      {cmd:"aws s3api put-bucket-policy --bucket www-example-site --policy file://oac-policy.json",why:"The bucket policy allows s3:GetObject only for cloudfront.amazonaws.com with a condition on your distribution's ARN."},
+    ]},
+    {title:"Point the domain at CloudFront",cmds:[
+      {cmd:"aws route53 change-resource-record-sets --hosted-zone-id <zone> --change-batch file://alias.json",why:"An alias A record pointing to the distribution is free to query and also works at the zone apex, where a CNAME is not allowed."},
+      {cmd:"curl -sI https://www.example.com | grep -iE 'x-cache|server'",why:"x-cache shows Hit or Miss from CloudFront, proving the edge serves your content."},
+    ]},
+   ]},
+  {id:"ec2-role",phase:"foundation",title:"Give EC2 Access to S3 Without Keys",subtitle:"IAM role, instance profile and Session Manager",emoji:"🎫",duration:"~25 min",difficulty:"Beginner",examWeight:"Critical",
+   goal:"An application on EC2 must read one bucket. Do it with no access keys on the server and no SSH port open.",concepts:["IAM role","Trust policy","Least privilege","Instance profile","Systems Manager"],
+   steps:[
+    {title:"Create a role EC2 can assume",cmds:[
+      {cmd:"echo '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ec2.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}' > trust.json",why:"The trust policy says who may assume the role. Here only the EC2 service."},
+      {cmd:"aws iam create-role --role-name app-reader --assume-role-policy-document file://trust.json",why:"The role has no permissions yet; that comes next."},
+    ]},
+    {title:"Grant least-privilege permissions",cmds:[
+      {cmd:"aws iam put-role-policy --role-name app-reader --policy-name read-reports --policy-document file://read-reports.json",why:"An inline policy allowing s3:GetObject on arn:aws:s3:::reports-bucket/* and s3:ListBucket on the bucket only, nothing more."},
+      {cmd:"aws iam attach-role-policy --role-name app-reader --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",why:"Lets the SSM agent register the instance so you can connect without SSH."},
+    ]},
+    {title:"Attach it through an instance profile",cmds:[
+      {cmd:"aws iam create-instance-profile --instance-profile-name app-reader && aws iam add-role-to-instance-profile --instance-profile-name app-reader --role-name app-reader",why:"EC2 receives roles through an instance profile. The console creates one automatically; the CLI does not."},
+      {cmd:"aws ec2 associate-iam-instance-profile --instance-id <id> --iam-instance-profile Name=app-reader",why:"Works on running instances. The SDKs pick up the credentials from the instance metadata service."},
+    ]},
+    {title:"Verify from inside the instance",cmds:[
+      {cmd:"aws ssm start-session --target <id>",why:"A browser or CLI shell with no inbound ports, no bastion and full logging."},
+      {cmd:"aws sts get-caller-identity && aws s3 ls s3://reports-bucket",why:"Shows the assumed-role ARN and proves access works. Try another bucket: it should be denied."},
+    ]},
+   ]},
+  {id:"two-tier-vpc",phase:"foundation",title:"Build a Two-Tier VPC Across Two AZs",subtitle:"Public and private subnets, IGW, NAT and security groups",emoji:"🏗️",duration:"~45 min",difficulty:"Intermediate",examWeight:"Critical",
+   goal:"Create a VPC with public subnets for a load balancer and private subnets for app servers in two Availability Zones, where only the load balancer is reachable from the internet.",concepts:["VPC","Subnets","Internet Gateway","NAT Gateway","Route tables","Security groups"],
+   steps:[
+    {title:"Create the VPC and four subnets",cmds:[
+      {cmd:"aws ec2 create-vpc --cidr-block 10.0.0.0/16 --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=prod}]'",why:"A /16 gives 65,536 addresses, room to grow. CIDRs must not overlap with networks you may later peer or connect to."},
+      {cmd:"aws ec2 create-subnet --vpc-id <vpc> --cidr-block 10.0.1.0/24 --availability-zone eu-west-1a   # public-a",why:"Each subnet lives in exactly one AZ. Repeat for 10.0.2.0/24 in 1b (public-b) and 10.0.11.0/24, 10.0.12.0/24 for private-a and private-b."},
+    ]},
+    {title:"Give the public subnets internet access",cmds:[
+      {cmd:"aws ec2 create-internet-gateway && aws ec2 attach-internet-gateway --vpc-id <vpc> --internet-gateway-id <igw>",why:"One Internet Gateway per VPC. AWS makes it highly available."},
+      {cmd:"aws ec2 create-route-table --vpc-id <vpc> && aws ec2 create-route --route-table-id <public-rt> --destination-cidr-block 0.0.0.0/0 --gateway-id <igw>",why:"What makes a subnet public is a route to the IGW."},
+      {cmd:"aws ec2 associate-route-table --route-table-id <public-rt> --subnet-id <public-a>",why:"Associate both public subnets with this table."},
+    ]},
+    {title:"Give private subnets outbound-only access",cmds:[
+      {cmd:"aws ec2 allocate-address && aws ec2 create-nat-gateway --subnet-id <public-a> --allocation-id <eip>",why:"The NAT Gateway sits in a public subnet. Create one per AZ: a single NAT Gateway is a single point of failure and adds cross-AZ data charges."},
+      {cmd:"aws ec2 create-route --route-table-id <private-rt-a> --destination-cidr-block 0.0.0.0/0 --nat-gateway-id <nat-a>",why:"Private subnets route outbound traffic through the NAT in their own AZ. Nothing on the internet can start a connection to them."},
+    ]},
+    {title:"Chain the security groups",cmds:[
+      {cmd:"aws ec2 authorize-security-group-ingress --group-id <sg-alb> --protocol tcp --port 443 --cidr 0.0.0.0/0",why:"Only the load balancer accepts traffic from the internet."},
+      {cmd:"aws ec2 authorize-security-group-ingress --group-id <sg-app> --protocol tcp --port 8080 --source-group <sg-alb>",why:"Referencing a security group instead of an IP range means only members of sg-alb can reach the app, however many there are."},
+    ]},
+   ]},
+  {id:"s3-lifecycle",phase:"foundation",title:"Cut Storage Costs with Lifecycle and Versioning",subtitle:"Right storage class at the right age",emoji:"🧊",duration:"~25 min",difficulty:"Beginner",examWeight:"High",
+   goal:"Logs are read often for 30 days, rarely for a year, and must be kept for 7 years for compliance. Store them at the lowest cost while protecting against accidental deletion.",concepts:["Storage classes","Lifecycle rules","Versioning","Glacier","Object Lock"],
+   steps:[
+    {title:"Protect objects first",cmds:[
+      {cmd:"aws s3api put-bucket-versioning --bucket app-logs --versioning-configuration Status=Enabled",why:"With versioning a delete only adds a delete marker, so previous versions can be recovered."},
+    ]},
+    {title:"Define the lifecycle",cmds:[
+      {cmd:"aws s3api put-bucket-lifecycle-configuration --bucket app-logs --lifecycle-configuration file://lc.json",why:"lc.json: transition to STANDARD_IA at 30 days, GLACIER (Flexible Retrieval) at 365 days, DEEP_ARCHIVE at 730 days, and expire at 2,555 days (about 7 years)."},
+      {cmd:"aws s3api get-bucket-lifecycle-configuration --bucket app-logs",why:"Check the rules. Note the minimum storage durations: 30 days for IA, 90 for Glacier Flexible, 180 for Deep Archive."},
+    ]},
+    {title:"Clean up old versions too",cmds:[
+      {cmd:"# lc.json also: NoncurrentVersionExpiration NoncurrentDays=90, AbortIncompleteMultipartUpload DaysAfterInitiation=7",why:"Old versions and abandoned multipart uploads are billed too. Forgetting them is a common source of unexplained S3 cost."},
+    ]},
+    {title:"When access patterns are unknown",cmds:[
+      {cmd:"aws s3 cp data/ s3://analytics-raw/ --recursive --storage-class INTELLIGENT_TIERING",why:"Intelligent-Tiering moves objects between access tiers automatically, with no retrieval fees, for a small monitoring charge per object."},
+      {cmd:"# For legal holds: create the bucket with --object-lock-enabled-for-bucket and use compliance mode",why:"Object Lock in compliance mode is write-once-read-many: nobody, not even root, can delete before the retention date."},
+    ]},
+   ]},
+
+  // ── INTERMEDIATE 5 ──────────────────────────────────────────────────────────
+  {id:"ha-web",phase:"intermediate",title:"Highly Available Web Tier",subtitle:"ALB, launch template and Auto Scaling across AZs",emoji:"⚖️",duration:"~45 min",difficulty:"Intermediate",examWeight:"Critical",
+   goal:"Run a web app that survives the loss of an instance or a whole AZ and scales with demand, using the VPC from the two-tier scenario.",concepts:["Application Load Balancer","Target groups","Launch templates","Auto Scaling","Health checks"],
+   steps:[
+    {title:"Create the load balancer and target group",cmds:[
+      {cmd:"aws elbv2 create-target-group --name web-tg --protocol HTTP --port 8080 --vpc-id <vpc> --health-check-path /health",why:"The target group holds the instances. The health check decides which ones get traffic."},
+      {cmd:"aws elbv2 create-load-balancer --name web-alb --subnets <public-a> <public-b> --security-groups <sg-alb>",why:"An ALB spans at least two AZs. Placing it in public subnets keeps the instances private."},
+      {cmd:"aws elbv2 create-listener --load-balancer-arn <alb> --protocol HTTPS --port 443 --certificates CertificateArn=<acm-arn> --default-actions Type=forward,TargetGroupArn=<tg>",why:"TLS terminates at the ALB using a free ACM certificate."},
+    ]},
+    {title:"Define how instances are built",cmds:[
+      {cmd:"aws ec2 create-launch-template --launch-template-name web --launch-template-data file://lt.json",why:"lt.json sets the AMI, instance type, sg-app, the instance profile and user data that installs and starts the app."},
+    ]},
+    {title:"Create the Auto Scaling group",cmds:[
+      {cmd:"aws autoscaling create-auto-scaling-group --auto-scaling-group-name web-asg --launch-template LaunchTemplateName=web,Version='$Latest' --min-size 2 --desired-capacity 2 --max-size 8 --vpc-zone-identifier '<private-a>,<private-b>' --target-group-arns <tg> --health-check-type ELB --health-check-grace-period 120",why:"A minimum of 2 across two AZs survives losing one AZ. ELB health checks mean instances failing the app check get replaced, not just those failing EC2 status checks."},
+      {cmd:"aws autoscaling put-scaling-policy --auto-scaling-group-name web-asg --policy-name cpu50 --policy-type TargetTrackingScaling --target-tracking-configuration '{\"PredefinedMetricSpecification\":{\"PredefinedMetricType\":\"ASGAverageCPUUtilization\"},\"TargetValue\":50}'",why:"Target tracking adds and removes instances to keep average CPU around 50%, like a thermostat."},
+    ]},
+    {title:"Test failure and recovery",cmds:[
+      {cmd:"aws ec2 terminate-instances --instance-ids <one-instance>",why:"Simulate a failure. The ALB stops routing to it and the ASG launches a replacement."},
+      {cmd:"aws elbv2 describe-target-health --target-group-arn <tg>",why:"Watch the new target go from initial to healthy."},
+    ]},
+   ]},
+  {id:"rds-ha",phase:"intermediate",title:"Resilient Database with Multi-AZ and Read Replicas",subtitle:"Availability, read scaling and managed secrets",emoji:"🗃️",duration:"~40 min",difficulty:"Intermediate",examWeight:"Critical",
+   goal:"Give the app a PostgreSQL database that fails over automatically, offloads reporting queries, keeps its password out of code and can be restored to any second in the last week.",concepts:["RDS","Multi-AZ","Read replicas","Secrets Manager","Point-in-time restore"],
+   steps:[
+    {title:"Place it in private subnets",cmds:[
+      {cmd:"aws rds create-db-subnet-group --db-subnet-group-name app-db --db-subnet-group-description private --subnet-ids <private-a> <private-b>",why:"A subnet group spanning two AZs is required for Multi-AZ and keeps the database off the internet."},
+    ]},
+    {title:"Create an encrypted Multi-AZ instance",cmds:[
+      {cmd:"aws rds create-db-instance --db-instance-identifier app-db --engine postgres --db-instance-class db.m6g.large --allocated-storage 100 --storage-type gp3 --multi-az --storage-encrypted --db-subnet-group-name app-db --vpc-security-group-ids <sg-db> --master-username appadmin --manage-master-user-password --backup-retention-period 7 --no-publicly-accessible",why:"Multi-AZ keeps a synchronous standby in another AZ. Encryption must be chosen at creation. --manage-master-user-password stores and rotates the password in Secrets Manager."},
+    ]},
+    {title:"Scale reads with a replica",cmds:[
+      {cmd:"aws rds create-db-instance-read-replica --db-instance-identifier app-db-reports --source-db-instance-identifier app-db",why:"Asynchronous replication gives reporting its own endpoint, so heavy queries do not slow the primary. The app must send reads to the replica endpoint."},
+    ]},
+    {title:"Prove failover and recovery",cmds:[
+      {cmd:"aws rds reboot-db-instance --db-instance-identifier app-db --force-failover",why:"The DNS endpoint moves to the standby, usually within a minute or two. Applications should reconnect on failure."},
+      {cmd:"aws rds restore-db-instance-to-point-in-time --source-db-instance-identifier app-db --target-db-instance-identifier app-db-restored --use-latest-restorable-time",why:"Restores always create a new instance. Point the app at it, or use it to recover deleted rows."},
+    ]},
+   ]},
+  {id:"fanout",phase:"intermediate",title:"Decouple Orders with SNS and SQS Fan-out",subtitle:"One event, many independent consumers",emoji:"📨",duration:"~35 min",difficulty:"Intermediate",examWeight:"High",
+   goal:"When an order is placed, billing, shipping and analytics must each process it independently, so that a slow or failed consumer never blocks the others or loses orders.",concepts:["SNS","SQS","Fan-out","Dead-letter queue","Visibility timeout"],
+   steps:[
+    {title:"Create the topic and queues",cmds:[
+      {cmd:"aws sns create-topic --name order-placed",why:"Producers publish once to the topic and do not need to know who consumes it."},
+      {cmd:"aws sqs create-queue --queue-name billing-dlq && aws sqs create-queue --queue-name billing --attributes file://billing-attrs.json",why:"billing-attrs.json sets VisibilityTimeout longer than processing time and a RedrivePolicy sending messages to billing-dlq after 5 failed receives."},
+      {cmd:"# Repeat for shipping and analytics queues",why:"Each consumer gets its own queue, so each scales and fails independently."},
+    ]},
+    {title:"Subscribe the queues",cmds:[
+      {cmd:"aws sns subscribe --topic-arn <topic> --protocol sqs --notification-endpoint <billing-queue-arn> --attributes RawMessageDelivery=true",why:"Raw delivery passes the original message body without the SNS envelope."},
+      {cmd:"aws sqs set-queue-attributes --queue-url <billing-url> --attributes file://allow-sns.json",why:"The queue policy must allow sns.amazonaws.com to SendMessage with a condition on the topic ARN, or deliveries silently fail."},
+    ]},
+    {title:"Filter what each consumer receives",cmds:[
+      {cmd:"aws sns set-subscription-attributes --subscription-arn <shipping-sub> --attribute-name FilterPolicy --attribute-value '{\"type\":[\"physical\"]}'",why:"Shipping receives only physical orders; digital ones never reach its queue."},
+    ]},
+    {title:"Publish and consume",cmds:[
+      {cmd:"aws sns publish --topic-arn <topic> --message '{\"orderId\":42}' --message-attributes '{\"type\":{\"DataType\":\"String\",\"StringValue\":\"physical\"}}'",why:"One publish lands in every matching queue."},
+      {cmd:"aws sqs receive-message --queue-url <billing-url> --wait-time-seconds 20",why:"Long polling cuts empty responses and cost. Delete each message after successful processing."},
+    ]},
+   ]},
+  {id:"serverless-api",phase:"intermediate",title:"Serverless API: API Gateway, Lambda and DynamoDB",subtitle:"No servers, pay per request",emoji:"⚡",duration:"~40 min",difficulty:"Intermediate",examWeight:"High",
+   goal:"Build an orders API that scales from zero to thousands of requests per second with no servers to manage and almost no cost when idle.",concepts:["API Gateway","Lambda","DynamoDB","IAM roles","Throttling"],
+   steps:[
+    {title:"Create the table",cmds:[
+      {cmd:"aws dynamodb create-table --table-name Orders --attribute-definitions AttributeName=orderId,AttributeType=S --key-schema AttributeName=orderId,KeyType=HASH --billing-mode PAY_PER_REQUEST",why:"On-demand capacity suits unpredictable traffic: no capacity planning and you pay per request."},
+    ]},
+    {title:"Deploy the function with a scoped role",cmds:[
+      {cmd:"aws iam create-role --role-name orders-fn --assume-role-policy-document file://lambda-trust.json",why:"The function's execution role, trusted by lambda.amazonaws.com."},
+      {cmd:"aws iam put-role-policy --role-name orders-fn --policy-name ddb --policy-document file://orders-ddb.json && aws iam attach-role-policy --role-name orders-fn --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",why:"Allow only PutItem and GetItem on the Orders table, plus permission to write CloudWatch Logs."},
+      {cmd:"aws lambda create-function --function-name orders --runtime python3.12 --handler app.handler --role <role-arn> --zip-file fileb://app.zip --environment Variables={TABLE=Orders} --timeout 10",why:"Configuration through environment variables keeps code portable between stages."},
+    ]},
+    {title:"Put an API in front",cmds:[
+      {cmd:"aws apigatewayv2 create-api --name orders-api --protocol-type HTTP --target <lambda-arn>",why:"Quick-create builds an HTTP API with a default route and stage pointing at the function."},
+      {cmd:"aws lambda add-permission --function-name orders --statement-id apigw --action lambda:InvokeFunction --principal apigateway.amazonaws.com --source-arn 'arn:aws:execute-api:<region>:<acct>:<api-id>/*'",why:"A resource-based policy lets API Gateway invoke the function. Missing this gives a 500 error."},
+      {cmd:"curl -s -X POST https://<api-id>.execute-api.<region>.amazonaws.com/ -d '{\"orderId\":\"1\"}'",why:"End-to-end test."},
+    ]},
+    {title:"Protect it",cmds:[
+      {cmd:"aws apigatewayv2 update-stage --api-id <id> --stage-name '$default' --default-route-settings ThrottlingBurstLimit=200,ThrottlingRateLimit=100",why:"Throttling protects the backend and your bill. Add a JWT authorizer with Cognito for user authentication."},
+    ]},
+   ]},
+  {id:"dns-failover",phase:"intermediate",title:"Route 53 Failover Between Regions",subtitle:"Health checks and active-passive DNS",emoji:"🧭",duration:"~30 min",difficulty:"Intermediate",examWeight:"High",
+   goal:"Send users to the primary Region normally and automatically switch to a static maintenance site in S3 (or a standby Region) if the primary fails.",concepts:["Route 53","Health checks","Failover routing","Alias records","TTL"],
+   steps:[
+    {title:"Create a health check for the primary",cmds:[
+      {cmd:"aws route53 create-health-check --caller-reference $(date +%s) --health-check-config Type=HTTPS,FullyQualifiedDomainName=primary.example.com,ResourcePath=/health,RequestInterval=30,FailureThreshold=3",why:"Health checkers in several locations probe the endpoint. Three failures in a row mark it unhealthy."},
+    ]},
+    {title:"Create primary and secondary failover records",cmds:[
+      {cmd:"aws route53 change-resource-record-sets --hosted-zone-id <zone> --change-batch file://failover.json",why:"failover.json holds two alias records for app.example.com: PRIMARY to the eu-west-1 ALB with the health check, and SECONDARY to the standby ALB or an S3 website endpoint."},
+    ]},
+    {title:"Test the failover",cmds:[
+      {cmd:"aws route53 update-health-check --health-check-id <id> --inverted",why:"Inverting the check simulates a failure without breaking anything."},
+      {cmd:"dig +short app.example.com",why:"Within the TTL plus detection time, answers switch to the secondary. Undo with --no-inverted."},
+    ]},
+    {title:"Know the alternatives",cmds:[
+      {cmd:"# Latency routing: send users to the Region with the lowest latency",why:"Use latency-based records with health checks for active-active multi-Region applications."},
+      {cmd:"# Global Accelerator: static anycast IPs with failover in seconds",why:"Choose it when DNS caching is a problem, for non-HTTP (TCP/UDP) traffic, or when clients need fixed IPs."},
+    ]},
+   ]},
+
+  // ── ADVANCED 6 ──────────────────────────────────────────────────────────────
+  {id:"private-access",phase:"advanced",title:"Keep Traffic Private with VPC Endpoints",subtitle:"No internet path to S3 or AWS APIs",emoji:"🚇",duration:"~35 min",difficulty:"Advanced",examWeight:"Critical",
+   goal:"Private instances must use S3 and Secrets Manager without a NAT Gateway, and the data bucket must reject any request that does not come through your VPC.",concepts:["Gateway endpoint","Interface endpoint","PrivateLink","Bucket policy conditions","Endpoint policies"],
+   steps:[
+    {title:"Add a free gateway endpoint for S3",cmds:[
+      {cmd:"aws ec2 create-vpc-endpoint --vpc-id <vpc> --service-name com.amazonaws.eu-west-1.s3 --route-table-ids <private-rt-a> <private-rt-b>",why:"Gateway endpoints (S3 and DynamoDB only) add a route using a prefix list. There is no hourly charge, and NAT data processing costs disappear for this traffic."},
+    ]},
+    {title:"Lock the bucket to the endpoint",cmds:[
+      {cmd:"aws s3api put-bucket-policy --bucket sensitive-data --policy file://vpce-only.json",why:"A Deny statement with the condition StringNotEquals aws:SourceVpce = vpce-xxxx blocks every request that does not arrive through the endpoint, even with valid credentials."},
+    ]},
+    {title:"Add an interface endpoint for other services",cmds:[
+      {cmd:"aws ec2 create-vpc-endpoint --vpc-endpoint-type Interface --vpc-id <vpc> --service-name com.amazonaws.eu-west-1.secretsmanager --subnet-ids <private-a> <private-b> --security-group-ids <sg-endpoints> --private-dns-enabled",why:"Interface endpoints place an ENI with a private IP in each subnet. Private DNS makes the normal service hostname resolve to it, so no code changes are needed."},
+      {cmd:"aws ec2 modify-vpc-endpoint --vpc-endpoint-id <id> --policy-document file://endpoint-policy.json",why:"An endpoint policy can also restrict which resources are reachable through the endpoint."},
+    ]},
+    {title:"Verify",cmds:[
+      {cmd:"nslookup secretsmanager.eu-west-1.amazonaws.com",why:"From a private instance, it should resolve to 10.x addresses in your subnets."},
+      {cmd:"aws s3 ls s3://sensitive-data   # from your laptop: AccessDenied",why:"Proves the bucket is reachable only from inside the VPC."},
+    ]},
+   ]},
+  {id:"kms-encrypt",phase:"advanced",title:"Encrypt Everything with KMS",subtitle:"Customer managed keys, defaults and enforcement",emoji:"🔑",duration:"~35 min",difficulty:"Advanced",examWeight:"Critical",
+   goal:"Encrypt S3, EBS and RDS with a customer managed key you control, rotate it yearly, and make unencrypted or non-TLS requests impossible.",concepts:["KMS","Key policies","Key rotation","Default encryption","Bucket policy enforcement"],
+   steps:[
+    {title:"Create and rotate a customer managed key",cmds:[
+      {cmd:"aws kms create-key --description 'app data key' --key-usage ENCRYPT_DECRYPT",why:"Customer managed keys give you control of the key policy, rotation and the ability to disable or audit use. AWS managed keys (aws/s3) cannot be shared cross-account."},
+      {cmd:"aws kms create-alias --alias-name alias/app-data --target-key-id <key-id> && aws kms enable-key-rotation --key-id <key-id>",why:"Automatic rotation creates new key material yearly; old material is kept so existing data still decrypts."},
+    ]},
+    {title:"Set encryption defaults",cmds:[
+      {cmd:"aws s3api put-bucket-encryption --bucket app-data --server-side-encryption-configuration '{\"Rules\":[{\"ApplyServerSideEncryptionByDefault\":{\"SSEAlgorithm\":\"aws:kms\",\"KMSMasterKeyID\":\"alias/app-data\"},\"BucketKeyEnabled\":true}]}'",why:"S3 Bucket Keys cut KMS request costs dramatically for buckets with many objects."},
+      {cmd:"aws ec2 enable-ebs-encryption-by-default && aws ec2 modify-ebs-default-kms-key-id --kms-key-id alias/app-data",why:"Every new EBS volume and snapshot in this Region is then encrypted automatically."},
+    ]},
+    {title:"Enforce TLS on the bucket",cmds:[
+      {cmd:"aws s3api put-bucket-policy --bucket app-data --policy file://deny-insecure.json",why:"Deny any s3:* request where aws:SecureTransport is false, so data is always encrypted in transit."},
+    ]},
+    {title:"Encrypt an existing unencrypted RDS database",cmds:[
+      {cmd:"aws rds create-db-snapshot --db-instance-identifier legacy --db-snapshot-identifier legacy-snap && aws rds copy-db-snapshot --source-db-snapshot-identifier legacy-snap --target-db-snapshot-identifier legacy-enc --kms-key-id alias/app-data",why:"You cannot switch encryption on for a running RDS instance. Snapshot, copy the snapshot with encryption, then restore from the encrypted copy."},
+      {cmd:"aws rds restore-db-instance-from-db-snapshot --db-instance-identifier legacy-enc --db-snapshot-identifier legacy-enc",why:"Cut over the application to the new encrypted instance."},
+    ]},
+   ]},
+  {id:"dr-pilot",phase:"advanced",title:"Pilot Light Disaster Recovery",subtitle:"Second Region with data replicated and compute off",emoji:"🕯️",duration:"~45 min",difficulty:"Advanced",examWeight:"High",
+   goal:"Meet an RPO of minutes and an RTO under an hour for a Region-wide outage, at a fraction of the cost of running two full environments.",concepts:["Pilot light","RPO/RTO","Cross-Region replicas","AMI copy","Route 53 failover"],
+   steps:[
+    {title:"Replicate the data continuously",cmds:[
+      {cmd:"aws rds create-db-instance-read-replica --db-instance-identifier app-db-dr --source-db-instance-identifier arn:aws:rds:eu-west-1:<acct>:db:app-db --region eu-central-1",why:"A cross-Region read replica keeps data minutes or seconds behind, setting your RPO. Aurora Global Database typically lags under a second."},
+      {cmd:"aws s3api put-bucket-replication --bucket app-uploads --replication-configuration file://crr.json",why:"Cross-Region Replication copies user uploads. Both buckets need versioning."},
+    ]},
+    {title:"Keep the compute blueprint ready",cmds:[
+      {cmd:"aws ec2 copy-image --source-region eu-west-1 --source-image-id <ami> --name web-dr --region eu-central-1",why:"AMIs are Regional. Copy every new release so the DR Region can launch the current version."},
+      {cmd:"aws autoscaling create-auto-scaling-group --auto-scaling-group-name web-dr --launch-template LaunchTemplateName=web-dr --min-size 0 --max-size 8 --desired-capacity 0 --vpc-zone-identifier '<dr-private-a>,<dr-private-b>' --region eu-central-1",why:"Infrastructure exists, but with zero instances it costs almost nothing. That is the pilot light."},
+    ]},
+    {title:"Fail over",cmds:[
+      {cmd:"aws rds promote-read-replica --db-instance-identifier app-db-dr --region eu-central-1",why:"Promotion turns the replica into a standalone writable database. Replication from the old primary stops."},
+      {cmd:"aws autoscaling set-desired-capacity --auto-scaling-group-name web-dr --desired-capacity 4 --region eu-central-1",why:"Light the fire: scale the application up to production size."},
+      {cmd:"# Route 53 failover record switches app.example.com to the DR load balancer",why:"With health-checked failover records this happens automatically; otherwise update DNS manually."},
+    ]},
+    {title:"Choose the right strategy",cmds:[
+      {cmd:"# Backup and restore < Pilot light < Warm standby < Multi-site active-active",why:"Cost rises and RPO/RTO fall from left to right. The exam scenario's RPO, RTO and budget tell you which one to pick."},
+    ]},
+   ]},
+  {id:"multi-account",phase:"advanced",title:"Multi-Account Guardrails with Organizations",subtitle:"OUs, SCPs and central billing",emoji:"🏢",duration:"~35 min",difficulty:"Advanced",examWeight:"High",
+   goal:"Separate production, development and security accounts, stop anyone launching resources outside approved Regions, and protect the audit trail from tampering.",concepts:["AWS Organizations","OUs","Service control policies","Consolidated billing","Control Tower"],
+   steps:[
+    {title:"Create the organisation and OUs",cmds:[
+      {cmd:"aws organizations create-organization --feature-set ALL",why:"ALL features enables SCPs and other policy types, not just consolidated billing."},
+      {cmd:"aws organizations create-organizational-unit --parent-id <root-id> --name Production",why:"Repeat for Development and Security. Policies attached to an OU apply to every account in it."},
+      {cmd:"aws organizations create-account --email prod@example.com --account-name prod",why:"New member accounts get an OrganizationAccountAccessRole that admins in the management account can assume."},
+    ]},
+    {title:"Restrict Regions with an SCP",cmds:[
+      {cmd:"aws organizations create-policy --type SERVICE_CONTROL_POLICY --name allowed-regions --content file://deny-regions.json",why:"Deny all actions when aws:RequestedRegion is not in [eu-west-1, eu-central-1], excluding global services such as IAM, Organizations and CloudFront."},
+      {cmd:"aws organizations attach-policy --policy-id <id> --target-id <production-ou>",why:"SCPs set the maximum permissions. Even an account administrator, or the member account's root user, cannot exceed them."},
+    ]},
+    {title:"Protect the audit trail",cmds:[
+      {cmd:"aws organizations create-policy --type SERVICE_CONTROL_POLICY --name protect-trail --content file://deny-cloudtrail-stop.json",why:"Deny cloudtrail:StopLogging and cloudtrail:DeleteTrail so nobody can turn off auditing to hide activity."},
+      {cmd:"aws cloudtrail create-trail --name org-trail --s3-bucket-name <log-archive-bucket> --is-organization-trail --is-multi-region-trail",why:"An organisation trail logs every account into the log archive account."},
+    ]},
+    {title:"Automate it next time",cmds:[
+      {cmd:"# Control Tower: landing zone with log archive and audit accounts plus preventive and detective controls",why:"Control Tower builds this structure for you and adds Account Factory for vending new accounts consistently."},
+    ]},
+   ]},
+  {id:"data-lake",phase:"advanced",title:"Serverless Data Lake with Glue and Athena",subtitle:"Query S3 with SQL, pay per query",emoji:"🏞️",duration:"~40 min",difficulty:"Advanced",examWeight:"Medium",
+   goal:"Make clickstream files in S3 queryable with SQL for analysts, without servers, and keep query costs low as data grows.",concepts:["S3 data lake","Glue crawler","Data Catalog","Athena","Partitioning","Parquet"],
+   steps:[
+    {title:"Land raw data in partitioned folders",cmds:[
+      {cmd:"aws s3 cp events.json s3://lake-raw/clicks/year=2026/month=10/day=01/",why:"Hive-style partition folders let queries skip data they do not need."},
+    ]},
+    {title:"Catalog it with a Glue crawler",cmds:[
+      {cmd:"aws glue create-database --database-input Name=analytics",why:"The Glue Data Catalog stores table definitions that Athena, Redshift Spectrum and EMR share."},
+      {cmd:"aws glue create-crawler --name clicks --role <glue-role> --database-name analytics --targets S3Targets=[{Path=s3://lake-raw/clicks/}]",why:"The crawler infers the schema and partitions automatically."},
+      {cmd:"aws glue start-crawler --name clicks",why:"Schedule it, or use partition projection, so new days appear automatically."},
+    ]},
+    {title:"Query with Athena",cmds:[
+      {cmd:"aws athena start-query-execution --query-string \"SELECT page, count(*) FROM analytics.clicks WHERE year='2026' AND month='10' GROUP BY page\" --work-group primary --result-configuration OutputLocation=s3://athena-results-<acct>/",why:"Athena charges per TB scanned. Filtering on partition columns scans only matching folders."},
+    ]},
+    {title:"Cut cost and speed it up",cmds:[
+      {cmd:"# Glue ETL job: convert JSON to Parquet with Snappy compression into s3://lake-curated/",why:"Columnar, compressed Parquet often reduces data scanned, and cost, by 80 to 90%."},
+      {cmd:"# Lake Formation: grant analysts column-level access to curated tables",why:"Central fine-grained permissions instead of complex bucket policies."},
+    ]},
+   ]},
+  {id:"cost-cut",phase:"advanced",title:"Cut the Monthly Bill by 40%",subtitle:"Right-size, commit, use Spot and clean up",emoji:"💰",duration:"~35 min",difficulty:"Intermediate",examWeight:"Critical",
+   goal:"Finance wants a big reduction without hurting reliability. Find waste, right-size, apply the right pricing models and set guardrails so costs stay down.",concepts:["Cost Explorer","Compute Optimizer","Savings Plans","Spot","gp3","Cost allocation tags"],
+   steps:[
+    {title:"See where money goes",cmds:[
+      {cmd:"aws ce get-cost-and-usage --time-period Start=2026-09-01,End=2026-10-01 --granularity MONTHLY --metrics UnblendedCost --group-by Type=DIMENSION,Key=SERVICE",why:"Start with the biggest services. Activate cost allocation tags so you can break cost down by team and project too."},
+    ]},
+    {title:"Right-size before you commit",cmds:[
+      {cmd:"aws compute-optimizer get-ec2-instance-recommendations --query 'instanceRecommendations[].[instanceArn,finding,recommendationOptions[0].instanceType]'",why:"Over-provisioned instances are the most common waste. Right-size first, or you lock waste into a commitment."},
+      {cmd:"aws ec2 modify-volume --volume-id <vol> --volume-type gp3",why:"gp3 is about 20% cheaper per GB than gp2 with better baseline performance, and the change happens online."},
+    ]},
+    {title:"Apply the right pricing model",cmds:[
+      {cmd:"aws ce get-savings-plans-purchase-recommendation --savings-plans-type COMPUTE_SP --term-in-years ONE_YEAR --payment-option NO_UPFRONT --lookback-period-in-days SIXTY_DAYS",why:"Savings Plans cover the steady baseline. Compute Savings Plans stay flexible across instance family, Region, Fargate and Lambda."},
+      {cmd:"# Auto Scaling group: mixed instances policy, On-Demand base plus Spot above it, several instance types",why:"Spot can save up to 90% for stateless, interruption-tolerant capacity. Diversifying instance types reduces interruptions."},
+    ]},
+    {title:"Remove waste and add guardrails",cmds:[
+      {cmd:"aws ec2 describe-volumes --filters Name=status,Values=available --query 'Volumes[].VolumeId'",why:"Unattached EBS volumes keep billing. Also look for idle load balancers, unused Elastic IPs and old snapshots."},
+      {cmd:"aws ec2 describe-nat-gateways --query 'NatGateways[].[NatGatewayId,State]'",why:"NAT data processing is a hidden cost; gateway endpoints for S3 and DynamoDB remove much of it."},
+      {cmd:"aws budgets create-budget --account-id <acct> --budget file://budget.json --notifications-with-subscribers file://notify.json",why:"Budgets with forecast alerts catch the next surprise before the invoice."},
+    ]},
+   ]},
+];
+
+const PHASES = [
+  {
+    id:"foundation",level:"BASIC",title:"Cloud Foundations",subtitle:"Zero → Core AWS Services",duration:"Weeks 1–4",
+    color:T.cyan,icon:"☁",badge:"L1",
+    topics:[
+      {title:"Global Infrastructure & Well-Architected Design",
+       keywords:["Region","Availability Zone","Edge Location","Well-Architected Framework","shared responsibility model","RPO","RTO"],
+       explanation:`Every architecture question on the exam starts with where things run and how failure is contained. Learn the building blocks first.
+
+THE GLOBAL INFRASTRUCTURE:
+• A Region is a separate geographic area, such as eu-west-1 (Ireland) or me-central-1 (UAE). Regions are isolated from each other, and data does not leave a Region unless you move it. Choose a Region by compliance and data residency first, then latency to users, then service availability, then price.
+• Each Region has several Availability Zones (usually three or more). An Availability Zone is one or more data centres with independent power, cooling and networking, connected to the other AZs by low-latency links. Deploying across at least two AZs is the default answer for high availability.
+• An Edge Location is a point of presence used by CloudFront, Route 53 and Global Accelerator to serve users close to where they are.
+Some services are global (IAM, Route 53, CloudFront, Organizations), some are Regional (S3 buckets, VPCs, Lambda, DynamoDB) and some are zonal (EC2 instances, EBS volumes, subnets).
+
+THE SHARED RESPONSIBILITY MODEL: Under the shared responsibility model, AWS is responsible for security of the cloud: hardware, facilities, networking and the virtualisation layer. You are responsible for security in the cloud: your data, identities and permissions, network rules, encryption choices and, for EC2, the guest operating system and patching. The more managed the service (RDS, Lambda, DynamoDB), the more AWS takes on.
+
+WELL-ARCHITECTED DESIGN: The Well-Architected Framework has six pillars, and the exam domains map onto them:
+• Security → least privilege, encryption, traceability (Domain 1, 30%)
+• Reliability → recover from failure, scale horizontally, stop guessing capacity (Domain 2, 26%)
+• Performance efficiency → right resource types, serverless, caching, global reach (Domain 3, 24%)
+• Cost optimisation → pay for what you use, right-size, pricing models (Domain 4, 20%)
+• Operational excellence and Sustainability round out the six.
+
+READING AN EXAM QUESTION: SAA-C03 questions are scenarios. Underline the requirement words: "most cost-effective", "least operational overhead", "highly available", "lowest latency", "without code changes". Two answers usually work; the right one best matches those words. "Least operational overhead" points to managed or serverless services. "Most cost-effective" rules out over-engineering.
+
+RESILIENCE VOCABULARY: RPO (Recovery Point Objective) is how much data you can afford to lose; RTO (Recovery Time Objective) is how long you can be down. Scenarios state them, and they decide between backups, replicas and multi-Region designs.`,
+       subtopics:["Regions, Availability Zones and edge locations","Global vs Regional vs zonal services","Choosing a Region: compliance, latency, services, cost","The shared responsibility model","Six Well-Architected pillars and how they map to the exam domains","Reading scenario questions: key requirement phrases"],
+       commands:[
+         {cmd:"aws ec2 describe-regions --query 'Regions[].RegionName' --output text",desc:"Regions enabled for your account."},
+         {cmd:"aws ec2 describe-availability-zones --region eu-west-1",desc:"AZs in a Region."},
+         {cmd:"aws configure set region eu-west-1",desc:"Default Region for the CLI."},
+         {cmd:"aws sts get-caller-identity",desc:"Confirm which account and identity you are using."},
+       ],
+       resources:[
+         {title:"AWS Global Infrastructure",url:"https://aws.amazon.com/about-aws/global-infrastructure/"},
+         {title:"AWS Well-Architected Framework",url:"https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html"},
+         {title:"Shared Responsibility Model",url:"https://aws.amazon.com/compliance/shared-responsibility-model/"},
+       ]},
+      {title:"IAM & Account Security",
+       keywords:["IAM","IAM user","IAM role","IAM policy","root user","MFA","STS","identity federation","IAM Identity Center","AWS Organizations","service control policy"],
+       explanation:`IAM decides who can do what to which resources. Security is the heaviest exam domain, and IAM is in almost every security question.
+
+THE IDENTITIES:
+• The root user created the account and has unlimited power. Turn on MFA, delete any root access keys and use it only for the few tasks that need it.
+• An IAM user has long-term credentials (password and/or access keys). Avoid them where you can: long-lived keys leak.
+• An IAM role has permissions but no permanent credentials. Anything that assumes it (an EC2 instance, a Lambda function, a user from another account, a federated user) receives temporary credentials from STS. Roles are the answer whenever a question mentions an application on AWS needing access, or cross-account access.
+• Groups collect users so you attach policies once.
+• For workforce access to many accounts, IAM Identity Center gives single sign-on with permission sets, connected to an identity source such as Active Directory or Entra ID. This is identity federation: external identities get temporary AWS credentials instead of IAM users.
+
+POLICIES: An IAM policy is JSON with statements of Effect (Allow/Deny), Action, Resource and optional Condition. Evaluation rules:
+1. Everything is denied by default.
+2. An explicit Allow permits the action...
+3. ...unless any applicable policy has an explicit Deny, which always wins.
+Identity-based policies attach to users, groups and roles. Resource-based policies (S3 bucket policies, SQS queue policies, KMS key policies) attach to the resource and name a Principal, which is how cross-account access often works. Conditions add context: aws:SourceIp, aws:SecureTransport, aws:PrincipalOrgID, aws:RequestedRegion, MFA present.
+
+LEAST PRIVILEGE: Grant only the actions and resources needed. AWS managed policies are a quick start; customer managed policies scoped to specific ARNs are better. IAM Access Analyzer finds resources shared outside your account and can generate policies from actual activity. Permission boundaries cap what a delegated admin can grant.
+
+MULTI-ACCOUNT: AWS Organizations groups accounts into organisational units (OUs) with consolidated billing. A service control policy (SCP) sets the maximum permissions for an OU or account. SCPs never grant anything; they only limit, and they apply even to the root user of member accounts (but not to the management account). Typical SCPs block unused Regions, prevent disabling CloudTrail, or deny leaving the organisation.
+
+EXAM PATTERNS: "Application on EC2 needs S3" → IAM role via instance profile, never embedded keys. "Users from another account" → cross-account role with a trust policy. "Corporate Active Directory users" → IAM Identity Center or SAML federation. "Prevent all accounts from using Region X" → SCP.`,
+       subtopics:["Root user protection and MFA","Users, groups and roles; temporary credentials via STS","Policy structure and evaluation (explicit Deny wins)","Identity-based vs resource-based policies; conditions","IAM Identity Center and federation","Organizations, OUs and service control policies"],
+       commands:[
+         {cmd:"aws iam create-role --role-name app --assume-role-policy-document file://trust.json",desc:"Create a role with a trust policy."},
+         {cmd:"aws iam attach-role-policy --role-name app --policy-arn <policy-arn>",desc:"Give the role permissions."},
+         {cmd:"aws sts assume-role --role-arn arn:aws:iam::<acct>:role/audit --role-session-name me",desc:"Cross-account temporary credentials."},
+         {cmd:"aws iam simulate-principal-policy --policy-source-arn <role-arn> --action-names s3:PutObject --resource-arns arn:aws:s3:::bucket/*",desc:"Test a permission before relying on it."},
+         {cmd:"aws accessanalyzer create-analyzer --analyzer-name org --type ORGANIZATION",desc:"Find resources shared outside the organisation."},
+       ],
+       resources:[
+         {title:"IAM policy evaluation logic",url:"https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic.html"},
+         {title:"Security best practices in IAM",url:"https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html"},
+         {title:"Service control policies",url:"https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html"},
+       ]},
+      {title:"Compute: EC2 Fundamentals & Pricing",
+       keywords:["EC2","AMI","instance type","user data","On-Demand","Reserved Instance","Savings Plans","Spot Instance","Dedicated Host","placement group","instance store","Auto Scaling group"],
+       explanation:`EC2 gives you virtual servers. The exam rarely asks how to launch one; it asks which type, which pricing model and which placement fits a scenario.
+
+LAUNCHING: An instance is launched from an AMI (the OS image, Regional, copyable across Regions), with an instance type, a subnet, security groups, an IAM role (via an instance profile) and optional user data, a script that runs on first boot to install software.
+
+INSTANCE TYPE FAMILIES: General purpose (M, and burstable T for spiky light loads), compute optimised (C: batch, gaming, encoding), memory optimised (R, X: in-memory databases, caches), storage optimised (I, D: high local IOPS, data warehousing) and accelerated (P, G, Inf, Trn: machine learning and graphics). Graviton (the g suffix, such as m7g) offers better price-performance for compatible workloads.
+
+PRICING MODELS (very frequently tested):
+• On-Demand → no commitment, per second. Short, unpredictable or uninterruptible workloads.
+• Savings Plans → commit to a dollar amount per hour for 1 or 3 years. Compute Savings Plans apply across instance family, size, Region, OS, Fargate and Lambda; EC2 Instance Savings Plans lock a family in a Region for a bigger discount.
+• Reserved Instance → commit to an instance configuration for 1 or 3 years. Standard RIs give the biggest discount; Convertible RIs allow changes. Also used for RDS, ElastiCache, Redshift and OpenSearch reservations.
+• Spot Instance → spare capacity at up to 90% off, reclaimable with a two-minute warning. Only for fault-tolerant, flexible work: batch, CI, rendering, stateless web tiers behind an Auto Scaling group.
+• Dedicated Host → a whole physical server for bring-your-own-licence (per-socket or per-core licensing) or compliance. Dedicated Instances give hardware isolation without host visibility.
+• Capacity Reservations → reserve capacity in a specific AZ without a discount, for example for a critical event.
+
+STORAGE ON INSTANCES: EBS volumes persist when an instance stops. Disks from the instance store are physically attached and very fast, but lose their data on stop or termination, so use them only for caches, buffers and replicated data.
+
+PLACEMENT: A placement group controls physical placement. Cluster packs instances in one AZ for the lowest latency and highest throughput (HPC). Spread puts each instance on distinct hardware (at most 7 per AZ) for a few critical instances. Partition separates groups of instances onto different racks for big distributed systems such as Hadoop, Cassandra and Kafka.
+
+SCALING AND ACCESS: An Auto Scaling group keeps the right number of instances healthy (covered in Level 2). Use Systems Manager Session Manager instead of SSH bastions: no inbound ports, no keys to manage, and every session logged. EC2 Instance Connect is another keyless option. Hibernate saves RAM to EBS for fast resume of long-initialising applications.`,
+       subtopics:["AMIs, user data, instance profiles","Instance families: M/T, C, R/X, I/D, accelerated; Graviton","On-Demand vs Savings Plans vs Reserved vs Spot vs Dedicated","EBS vs instance store","Cluster, spread and partition placement groups","Session Manager instead of SSH; hibernation"],
+       commands:[
+         {cmd:"aws ec2 run-instances --image-id <ami> --instance-type m7g.large --subnet-id <sn> --iam-instance-profile Name=app --user-data file://bootstrap.sh",desc:"Launch with a role and bootstrap script."},
+         {cmd:"aws ec2 describe-instance-types --filters Name=processor-info.supported-architecture,Values=arm64 --query 'InstanceTypes[].InstanceType' --max-items 10",desc:"Find Graviton (ARM) types."},
+         {cmd:"aws ec2 request-spot-instances --instance-count 2 --launch-specification file://spec.json",desc:"Request Spot capacity."},
+         {cmd:"aws ec2 create-placement-group --group-name hpc --strategy cluster",desc:"Low-latency placement for HPC."},
+         {cmd:"aws ssm start-session --target <instance-id>",desc:"Shell access without SSH."},
+       ],
+       resources:[
+         {title:"EC2 instance types",url:"https://aws.amazon.com/ec2/instance-types/"},
+         {title:"EC2 pricing options",url:"https://aws.amazon.com/ec2/pricing/"},
+         {title:"Placement groups",url:"https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html"},
+       ]},
+      {title:"Storage: S3, EBS & EFS",
+       keywords:["S3","bucket policy","S3 storage class","S3 Glacier","lifecycle rule","S3 versioning","S3 Replication","presigned URL","S3 Transfer Acceleration","EBS","gp3","io2","EBS snapshot","EFS","FSx"],
+       explanation:`Choosing the right storage is one of the most common exam tasks. First decide between object, block and file storage, then the tier.
+
+S3 (OBJECT STORAGE): S3 stores objects in buckets, designed for eleven nines of durability, with strong read-after-write consistency and virtually unlimited scale. Individual objects can be up to 5 TB; use multipart upload for large files.
+Each S3 storage class, from hot to cold:
+• Standard → frequent access, multi-AZ
+• Intelligent-Tiering → unknown or changing patterns; moves objects automatically with no retrieval fees
+• Standard-IA → infrequent access but needs milliseconds; per-GB retrieval fee, 30-day minimum
+• One Zone-IA → like IA in one AZ; cheaper, for reproducible data
+• S3 Glacier Instant Retrieval → archive accessed about quarterly, millisecond retrieval
+• Glacier Flexible Retrieval → archives retrieved in minutes to hours (expedited, standard, bulk)
+• Glacier Deep Archive → the cheapest; retrieval within 12 hours (standard) or 48 hours (bulk)
+A lifecycle rule moves objects to colder classes as they age and expires them at the end. S3 versioning keeps every version and protects against deletes; Object Lock adds write-once-read-many retention. S3 Replication copies objects to another bucket in the same or another Region.
+
+S3 SECURITY: Block Public Access is on by default. Use a bucket policy for cross-account access, to require encryption or TLS, or to allow only a VPC endpoint or CloudFront. A presigned URL grants temporary access to one object. Objects are encrypted at rest by default (SSE-S3); use SSE-KMS for key control and audit.
+
+S3 PERFORMANCE: Multipart upload for big files, byte-range fetches for parallel downloads, S3 Transfer Acceleration for long-distance uploads through edge locations, and CloudFront for frequent global reads.
+
+EBS (BLOCK STORAGE): EBS volumes attach to one EC2 instance (except io2 Multi-Attach) and live in one AZ. Types: gp3 (general SSD, set IOPS and throughput independently, default choice), io2 (provisioned IOPS for critical databases), st1 (throughput HDD for big sequential data) and sc1 (cold HDD). HDD types cannot be boot volumes. An EBS snapshot is an incremental backup; copy it to move a volume to another AZ or Region. Data Lifecycle Manager automates snapshots.
+
+EFS AND FSX (FILE STORAGE): EFS is managed NFS for Linux, shared by many instances across AZs, growing and shrinking automatically, with lifecycle tiers (Infrequent Access, Archive) to cut cost. FSx provides other file systems: FSx for Windows File Server (SMB, Active Directory, Windows apps), FSx for Lustre (high-performance computing and machine learning, linked to S3), and FSx for NetApp ONTAP and OpenZFS (enterprise NAS features, multi-protocol).
+
+DECISION SHORTCUTS: Shared files for many Linux instances → EFS. Windows shares → FSx for Windows. HPC scratch → FSx for Lustre. A database disk for one instance → EBS. Static assets, backups, data lakes → S3.`,
+       subtopics:["Object vs block vs file storage","S3 storage classes and minimum durations","Lifecycle rules, versioning, Object Lock and replication","S3 security: Block Public Access, bucket policies, presigned URLs, encryption","EBS volume types and snapshots","EFS vs FSx for Windows vs FSx for Lustre"],
+       commands:[
+         {cmd:"aws s3api put-bucket-lifecycle-configuration --bucket logs --lifecycle-configuration file://lc.json",desc:"Age objects into cheaper classes."},
+         {cmd:"aws s3 presign s3://bucket/invoice.pdf --expires-in 900",desc:"15-minute download link."},
+         {cmd:"aws s3api put-bucket-accelerate-configuration --bucket uploads --accelerate-configuration Status=Enabled",desc:"Enable Transfer Acceleration."},
+         {cmd:"aws ec2 modify-volume --volume-id <vol> --volume-type gp3 --iops 6000 --throughput 250",desc:"Change volume type and performance online."},
+         {cmd:"aws efs create-file-system --encrypted --throughput-mode elastic",desc:"Shared NFS storage."},
+       ],
+       resources:[
+         {title:"S3 storage classes",url:"https://aws.amazon.com/s3/storage-classes/"},
+         {title:"EBS volume types",url:"https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volume-types.html"},
+         {title:"Choosing a file system (EFS vs FSx)",url:"https://aws.amazon.com/fsx/when-to-choose-fsx/"},
+       ]},
+      {title:"Networking: VPC Fundamentals",
+       keywords:["VPC","subnet","route table","Internet Gateway","NAT Gateway","security group","network ACL","Elastic IP","Availability Zone"],
+       explanation:`Almost every architecture runs inside a VPC. You must be able to picture subnets, routes and firewalls and spot why traffic does or does not flow.
+
+THE VPC: A VPC is your private network in a Region with a CIDR block such as 10.0.0.0/16. Plan CIDRs so they do not overlap with other VPCs or on-premises networks you may connect later.
+
+SUBNETS: A subnet is a slice of the VPC's range that lives in exactly one Availability Zone. AWS reserves five addresses in every subnet. Use at least two AZs for anything that must be highly available.
+• Public subnet → its route table has 0.0.0.0/0 pointing to an Internet Gateway. Load balancers, NAT Gateways and bastions go here.
+• Private subnet → no route to the Internet Gateway. Application servers and databases go here.
+
+ROUTING: Each subnet is associated with a route table. The local route (VPC CIDR) always exists. Common targets: Internet Gateway (internet for public IPs), NAT Gateway (outbound-only internet for private subnets), VPC endpoints, peering connections, Transit Gateway and virtual private gateways.
+
+INTERNET ACCESS: The Internet Gateway is horizontally scaled and highly available. A NAT Gateway lets private instances start outbound connections (patching, external APIs) while staying unreachable from outside. It is zonal, so for resilience put one in each AZ and route each private subnet to the NAT in its own AZ. NAT Gateways charge per hour and per GB, which is a frequent cost-optimisation trap. An Elastic IP is a static public IPv4 address. For IPv6, an egress-only Internet Gateway gives outbound-only access.
+
+FIREWALLS:
+• security group → attached to instances and ENIs. Stateful (return traffic is allowed automatically), allow rules only, all rules evaluated. A rule can reference another security group, the cleanest way to say "only the load balancer may reach the app".
+• network ACL → attached to subnets. Stateless (you must allow return traffic, including ephemeral ports 1024-65535), allow and deny rules evaluated in number order, first match wins. Use NACLs to block a specific IP range, because security groups cannot deny.
+
+VISIBILITY: VPC Flow Logs capture accepted and rejected traffic metadata for a VPC, subnet or ENI, sent to CloudWatch Logs or S3. Reachability Analyzer explains why two endpoints can or cannot connect.
+
+EXAM PATTERNS: "Private instances need to download patches" → NAT Gateway in a public subnet, one per AZ. "Block a malicious IP" → network ACL deny rule (or WAF for HTTP). "Web tier talks to database tier only" → database security group allows the web tier's security group on the DB port.`,
+       subtopics:["VPC CIDR planning and reserved addresses","Public vs private subnets and route tables","Internet Gateway, NAT Gateway (one per AZ), Elastic IPs","Security groups: stateful, allow-only, SG references","Network ACLs: stateless, ordered allow/deny, ephemeral ports","Flow Logs and Reachability Analyzer"],
+       commands:[
+         {cmd:"aws ec2 create-vpc --cidr-block 10.0.0.0/16",desc:"New VPC."},
+         {cmd:"aws ec2 create-subnet --vpc-id <vpc> --cidr-block 10.0.11.0/24 --availability-zone eu-west-1a",desc:"Subnet in one AZ."},
+         {cmd:"aws ec2 create-nat-gateway --subnet-id <public-sn> --allocation-id <eip>",desc:"NAT Gateway for private subnets."},
+         {cmd:"aws ec2 authorize-security-group-ingress --group-id <db-sg> --protocol tcp --port 5432 --source-group <app-sg>",desc:"Database reachable only from the app tier."},
+         {cmd:"aws ec2 create-flow-logs --resource-type VPC --resource-ids <vpc> --traffic-type ALL --log-destination-type cloud-watch-logs --log-group-name vpc-flow --deliver-logs-permission-arn <role>",desc:"Capture VPC traffic metadata."},
+       ],
+       resources:[
+         {title:"How Amazon VPC works",url:"https://docs.aws.amazon.com/vpc/latest/userguide/how-it-works.html"},
+         {title:"Security groups vs network ACLs",url:"https://docs.aws.amazon.com/vpc/latest/userguide/infrastructure-security.html"},
+         {title:"NAT gateways",url:"https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html"},
+       ]},
+    ],
+    labs:[
+      {title:"Lab 1: Secure Account Baseline",difficulty:"Easy",desc:"Enable MFA on the root user, create an administrator through IAM Identity Center, configure a CLI profile with SSO, start a multi-Region CloudTrail trail and create a 20 USD monthly budget with an 80% alert.",solution:"# Console: root → Security credentials → MFA\n# Console: IAM Identity Center → enable → user + AdministratorAccess permission set\naws configure sso --profile admin && aws sso login --profile admin\naws sts get-caller-identity --profile admin\naws s3 mb s3://trail-<acct>\naws cloudtrail create-trail --name main --s3-bucket-name trail-<acct> --is-multi-region-trail\naws cloudtrail start-logging --name main\naws budgets create-budget --account-id <acct> --budget file://budget.json --notifications-with-subscribers file://notify.json"},
+      {title:"Lab 2: Least-Privilege Role",difficulty:"Medium",desc:"Create an IAM role for EC2 that can only read objects under the prefix reports/ in one bucket. Attach it to an instance, connect with Session Manager and prove it can read reports/ but not write or read elsewhere.",solution:"aws iam create-role --role-name reports-ro --assume-role-policy-document file://ec2-trust.json\n# policy: s3:GetObject on arn:aws:s3:::data-bucket/reports/*, s3:ListBucket on arn:aws:s3:::data-bucket with condition s3:prefix reports/\naws iam put-role-policy --role-name reports-ro --policy-name ro --policy-document file://reports-ro.json\naws iam attach-role-policy --role-name reports-ro --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore\naws iam create-instance-profile --instance-profile-name reports-ro && aws iam add-role-to-instance-profile --instance-profile-name reports-ro --role-name reports-ro\naws ec2 associate-iam-instance-profile --instance-id <id> --iam-instance-profile Name=reports-ro\naws ssm start-session --target <id>\naws s3 cp s3://data-bucket/reports/q3.csv .   # works\naws s3 cp test.txt s3://data-bucket/reports/   # AccessDenied"},
+      {title:"Lab 3: EC2 with User Data",difficulty:"Easy",desc:"Launch a t3.micro Amazon Linux instance in a public subnet with user data that installs and starts a web server showing the instance ID. Allow HTTP from your IP only. Stop the instance and note what happens to the public IP.",solution:"cat > ud.sh <<'EOF'\n#!/bin/bash\ndnf install -y httpd\nTOKEN=$(curl -sX PUT http://169.254.169.254/latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 60')\ncurl -s -H \"X-aws-ec2-metadata-token: $TOKEN\" http://169.254.169.254/latest/meta-data/instance-id > /var/www/html/index.html\nsystemctl enable --now httpd\nEOF\naws ec2 authorize-security-group-ingress --group-id <sg> --protocol tcp --port 80 --cidr <my-ip>/32\naws ec2 run-instances --image-id <al2023-ami> --instance-type t3.micro --subnet-id <public-sn> --security-group-ids <sg> --associate-public-ip-address --user-data file://ud.sh\naws ec2 stop-instances --instance-ids <id> && aws ec2 start-instances --instance-ids <id>\n# The auto-assigned public IP changes; use an Elastic IP for a fixed address"},
+      {title:"Lab 4: S3 Lifecycle & Versioning",difficulty:"Medium",desc:"Create a bucket with versioning and Block Public Access. Add a lifecycle rule: Standard-IA at 30 days, Glacier Flexible Retrieval at 180 days, expire at 3 years, and delete noncurrent versions after 60 days. Upload a file, overwrite it, delete it, then restore the earlier version.",solution:"aws s3 mb s3://lab-versions-<acct>\naws s3api put-bucket-versioning --bucket lab-versions-<acct> --versioning-configuration Status=Enabled\naws s3api put-bucket-lifecycle-configuration --bucket lab-versions-<acct> --lifecycle-configuration file://lc.json\necho v1 > f.txt && aws s3 cp f.txt s3://lab-versions-<acct>/\necho v2 > f.txt && aws s3 cp f.txt s3://lab-versions-<acct>/\naws s3 rm s3://lab-versions-<acct>/f.txt\naws s3api list-object-versions --bucket lab-versions-<acct> --prefix f.txt\naws s3api delete-object --bucket lab-versions-<acct> --key f.txt --version-id <delete-marker-id>"},
+      {title:"Lab 5: Two-AZ VPC from Scratch",difficulty:"Hard",desc:"Build a VPC with two public and two private subnets across two AZs, an Internet Gateway, one NAT Gateway per AZ, and route tables. Launch a private instance, confirm it can reach the internet outbound but has no public IP, and add a NACL rule that blocks one IP range.",solution:"aws ec2 create-vpc --cidr-block 10.0.0.0/16\n# 4 subnets: 10.0.1.0/24 (pub-a), 10.0.2.0/24 (pub-b), 10.0.11.0/24 (priv-a), 10.0.12.0/24 (priv-b)\naws ec2 create-internet-gateway && aws ec2 attach-internet-gateway --vpc-id <vpc> --internet-gateway-id <igw>\naws ec2 create-route --route-table-id <pub-rt> --destination-cidr-block 0.0.0.0/0 --gateway-id <igw>\naws ec2 create-nat-gateway --subnet-id <pub-a> --allocation-id <eip-a>   # repeat for pub-b\naws ec2 create-route --route-table-id <priv-rt-a> --destination-cidr-block 0.0.0.0/0 --nat-gateway-id <nat-a>\naws ssm start-session --target <private-instance> # then: curl -sI https://aws.amazon.com\naws ec2 create-network-acl-entry --network-acl-id <acl> --rule-number 50 --protocol -1 --cidr-block 203.0.113.0/24 --rule-action deny --ingress"},
+    ],
+    assessment:{title:"L1 Cloud Foundations Quiz",questions:[
+      {q:"What is the minimum design for a highly available web application within one Region?",options:["Two instances in one AZ","Resources spread across at least two Availability Zones","Two Regions","One large instance with an Elastic IP"],answer:1,explain:"AZs are isolated failure domains. Spreading across two or more AZs survives the loss of one."},
+      {q:"Under the shared responsibility model, who patches the guest OS on EC2?",options:["AWS","The customer","AWS Support","Nobody, EC2 is serverless"],answer:1,explain:"On EC2 the customer manages the guest operating system. With RDS or Lambda, AWS handles patching of the underlying platform."},
+      {q:"An app on EC2 needs to write to an S3 bucket. What is the most secure approach?",options:["Store access keys in a config file","Use an IAM role attached through an instance profile","Make the bucket public","Use the root user's keys"],answer:1,explain:"Roles provide temporary, automatically rotated credentials. Never store long-term keys on instances."},
+      {q:"An IAM policy allows s3:* but an SCP on the account denies s3:DeleteBucket. Can the user delete a bucket?",options:["Yes, IAM wins","No, the explicit Deny in the SCP wins","Only with MFA","Only the root user can"],answer:1,explain:"An explicit Deny anywhere wins. SCPs also limit the maximum permissions of member accounts."},
+      {q:"Which policy type grants access to a resource for principals in another AWS account without them assuming a role?",options:["Service control policy","Resource-based policy such as an S3 bucket policy","Permission boundary","Session policy"],answer:1,explain:"Resource-based policies name a Principal, which can be another account. SCPs and boundaries only limit permissions."},
+      {q:"A nightly batch job can be interrupted and restarted. Which EC2 pricing model is cheapest?",options:["On-Demand","Spot Instances","Dedicated Hosts","Reserved Instances"],answer:1,explain:"Spot offers up to 90% off for interruption-tolerant work."},
+      {q:"A licence is tied to physical CPU sockets. Which option is required?",options:["Spot Instances","Dedicated Hosts","Savings Plans","Placement groups"],answer:1,explain:"Dedicated Hosts give visibility of sockets and cores for bring-your-own-licence."},
+      {q:"An HPC application needs the lowest possible network latency between instances. Which placement group?",options:["Spread","Partition","Cluster","None"],answer:2,explain:"Cluster placement packs instances close together in one AZ for low latency and high throughput."},
+      {q:"Data on which storage is lost when an instance is stopped?",options:["EBS gp3","EFS","Instance store","S3"],answer:2,explain:"Instance store is ephemeral and tied to the host. EBS, EFS and S3 persist."},
+      {q:"Logs are rarely read after 90 days and must be kept for 7 years at the lowest cost. What do you use?",options:["S3 Standard only","A lifecycle rule moving objects to Glacier Deep Archive","EBS snapshots","EFS Standard"],answer:1,explain:"Lifecycle rules transition aged objects automatically; Deep Archive is the cheapest class for long-term retention."},
+      {q:"Many Linux instances across AZs need a shared POSIX file system. Which service fits?",options:["EBS","EFS","S3 Glacier","Instance store"],answer:1,explain:"EFS is managed NFS mountable by many instances across AZs."},
+      {q:"What makes a subnet public?",options:["It has instances with Elastic IPs","Its route table has a route to an Internet Gateway","Its NACL allows all traffic","It is in the first AZ"],answer:1,explain:"A subnet is public because its route table sends 0.0.0.0/0 to an Internet Gateway."},
+      {q:"Private instances must download updates but stay unreachable from the internet. What do you add?",options:["Internet Gateway route in the private subnet","NAT Gateway in a public subnet","VPC peering","Elastic IP on each instance"],answer:1,explain:"A NAT Gateway allows outbound-only connections. Place it in a public subnet, ideally one per AZ."},
+      {q:"How do security groups and network ACLs differ?",options:["SGs are stateless; NACLs are stateful","SGs are stateful with allow rules only; NACLs are stateless with ordered allow and deny rules","Both support deny rules","NACLs attach to instances"],answer:1,explain:"Security groups are stateful allow-lists on ENIs. NACLs are stateless, ordered, subnet-level and can deny."},
+      {q:"You must block traffic from one specific malicious IP range to a subnet. What do you use?",options:["A security group deny rule","A network ACL deny rule","A route table blackhole","An IAM policy"],answer:1,explain:"Security groups cannot deny. A NACL deny rule with a lower number than the allow rules blocks the range."},
+    ]}
+  },
+
+  {
+    id:"intermediate",level:"INTERMEDIATE",title:"Resilient & High-Performing",subtitle:"Scale, Databases, Edge & Decoupling",duration:"Weeks 5–8",
+    color:T.violet,icon:"◈",badge:"L2",
+    topics:[
+      {title:"Load Balancing & Auto Scaling",
+       keywords:["Elastic Load Balancing","Application Load Balancer","Network Load Balancer","Gateway Load Balancer","target group","Auto Scaling group","launch template","scaling policy","health check","Spot Instance"],
+       explanation:`Horizontal scaling behind a load balancer is the backbone of resilient AWS design. Expect several questions that hinge on choosing the right load balancer or scaling policy.
+
+ELASTIC LOAD BALANCING: Elastic Load Balancing spreads traffic across healthy targets in multiple AZs and removes unhealthy ones.
+• Application Load Balancer (layer 7, HTTP/HTTPS/gRPC) → routes by path (/api, /images), host name (api.example.com), headers, query strings or source IP. Targets: instances, IPs, containers and Lambda functions. Supports authentication with Cognito or OIDC, redirects and fixed responses. Choose it for web apps and microservices.
+• Network Load Balancer (layer 4, TCP/UDP/TLS) → millions of requests per second with very low latency, a static IP (or Elastic IP) per AZ, and preserved client source IPs. Choose it for non-HTTP protocols, gaming, IoT, extreme performance, or when clients must allow-list fixed IPs. It can also front PrivateLink services.
+• Gateway Load Balancer (layer 3, GENEVE) → inserts third-party firewalls and inspection appliances transparently into traffic paths.
+
+TARGET GROUPS AND HEALTH: A target group defines targets, the protocol and port, and the health check (path, interval, thresholds). Cross-zone load balancing spreads traffic evenly across all targets in all AZs (on by default for ALB). Connection draining (deregistration delay) lets in-flight requests finish. Sticky sessions keep a user on one target, but storing sessions in ElastiCache or DynamoDB is the more scalable design.
+
+TLS: Terminate HTTPS at the load balancer with a free ACM certificate. SNI lets one listener serve many certificates for different domains.
+
+AUTO SCALING GROUPS: An Auto Scaling group launches instances from a launch template across the subnets (AZs) you specify and keeps between min and max running.
+• Health checks: EC2 status checks by default; choose ELB health checks so instances that fail the application check are replaced too.
+• Each scaling policy is one of: target tracking (keep average CPU at 50% or requests per target at 1,000: the simplest and usually best answer), step scaling (add 2 when CPU > 70%, 4 when > 90%), scheduled scaling (scale up every weekday at 08:00), or predictive scaling (forecasts from history).
+• Cooldowns and warm-up stop the group overreacting. Warm pools keep pre-initialised instances ready for apps with long start-up times.
+• Lifecycle hooks pause instances on launch or termination to run setup or copy logs.
+• A mixed instances policy combines On-Demand and Spot Instance capacity across several instance types to cut cost while keeping a reliable baseline.
+• Instance refresh rolls out a new launch template version gradually.
+
+EXAM PATTERNS: "Route /api and /web to different services" → ALB path rules. "UDP traffic" or "static IPs" → NLB. "Third-party firewall appliances" → GWLB. "Traffic spikes every Monday at 9" → scheduled scaling. "Keep CPU at 60%" → target tracking.`,
+       subtopics:["ALB vs NLB vs GWLB — when to use each","Target groups, health checks, cross-zone, deregistration delay","TLS termination with ACM and SNI","Launch templates and multi-AZ Auto Scaling groups","Target tracking, step, scheduled and predictive scaling","Mixed instances with Spot, warm pools, lifecycle hooks"],
+       commands:[
+         {cmd:"aws elbv2 create-rule --listener-arn <l> --priority 10 --conditions Field=path-pattern,Values='/api/*' --actions Type=forward,TargetGroupArn=<api-tg>",desc:"Path-based routing on an ALB."},
+         {cmd:"aws elbv2 create-load-balancer --name tcp-nlb --type network --subnet-mappings SubnetId=<sn-a>,AllocationId=<eip-a> SubnetId=<sn-b>,AllocationId=<eip-b>",desc:"NLB with Elastic IPs per AZ."},
+         {cmd:"aws autoscaling put-scheduled-update-group-action --auto-scaling-group-name web-asg --scheduled-action-name weekday-am --recurrence '0 7 * * 1-5' --desired-capacity 6",desc:"Scheduled scale-up."},
+         {cmd:"aws autoscaling update-auto-scaling-group --auto-scaling-group-name web-asg --health-check-type ELB --health-check-grace-period 120",desc:"Replace instances that fail app health checks."},
+       ],
+       resources:[
+         {title:"Elastic Load Balancing features comparison",url:"https://aws.amazon.com/elasticloadbalancing/features/"},
+         {title:"Amazon EC2 Auto Scaling — scaling policies",url:"https://docs.aws.amazon.com/autoscaling/ec2/userguide/scale-your-group.html"},
+       ]},
+      {title:"Databases: RDS, Aurora & DynamoDB",
+       keywords:["RDS","Multi-AZ","read replica","Aurora","Aurora Serverless","RDS Proxy","DynamoDB","DAX","DynamoDB Streams","global table","ElastiCache"],
+       explanation:`Choosing and configuring the right database is a staple of all four domains. Start with the data model: relational (SQL, joins, transactions) or key-value/document at massive scale.
+
+RDS: RDS is managed MySQL, PostgreSQL, MariaDB, Oracle, SQL Server and Db2. AWS handles provisioning, patching, backups and failover; you choose instance size and storage.
+• Multi-AZ → a synchronous standby in another AZ with automatic failover (typically 60 to 120 seconds) through the same DNS endpoint. It is for availability, not read scaling. A Multi-AZ DB cluster (MySQL/PostgreSQL) adds two readable standbys and faster failover.
+• read replica → asynchronous copy for scaling reads, which can be in another Region (also useful for DR) and can be promoted to a standalone database. Applications must send reads to the replica endpoint.
+• Backups → automated daily backups plus transaction logs give point-in-time restore within the retention period (up to 35 days). Restores create a new instance.
+• Encryption must be chosen at creation. To encrypt an existing unencrypted database, snapshot it, copy the snapshot with encryption and restore.
+• RDS Proxy pools connections, which protects databases from connection storms (for example from Lambda) and cuts failover time.
+
+AURORA: Aurora is AWS's MySQL- and PostgreSQL-compatible engine. Storage keeps six copies across three AZs and grows automatically. It supports up to 15 low-lag Aurora Replicas behind a reader endpoint with automatic failover to a replica. Aurora Global Database replicates to other Regions with typically under a second of lag for low-RPO disaster recovery and fast local reads. Aurora Serverless v2 scales capacity in fine increments for variable workloads. Cloning creates fast copies for testing; Backtrack rewinds a MySQL cluster in place.
+
+DYNAMODB: DynamoDB is serverless NoSQL with single-digit-millisecond latency at any scale.
+• Data model: tables of items with a partition key (and optional sort key). Design keys for your access patterns; add global secondary indexes for other queries. Choose high-cardinality partition keys to avoid hot partitions.
+• Capacity: on-demand (pay per request, for unpredictable traffic) or provisioned with auto scaling (cheaper for steady traffic).
+• DAX → in-memory cache giving microsecond reads with no application logic change.
+• DynamoDB Streams → change log that triggers Lambda for event-driven processing.
+• A global table → multi-Region, active-active replication.
+• Point-in-time recovery (35 days), on-demand backups and TTL (expire items automatically for free).
+
+CACHING: ElastiCache (Redis OSS, Valkey or Memcached) caches query results and stores session state. Redis-compatible engines add replication, Multi-AZ failover, persistence and rich data types; Memcached is simple, multi-threaded and has no replication. Caching patterns: lazy loading (cache on miss) and write-through (update the cache on every write).
+
+OTHER PURPOSE-BUILT DATABASES: Redshift (data warehouse), Neptune (graph), DocumentDB (MongoDB-compatible), Keyspaces (Cassandra-compatible), Timestream (time series) and MemoryDB (durable Redis-compatible primary database).
+
+EXAM PATTERNS: "Survive an AZ failure with no data loss" → Multi-AZ. "Reporting slows the primary" → read replica. "Too many connections from Lambda" → RDS Proxy. "Microsecond reads on DynamoDB" → DAX. "Millions of users, key-value, any scale" → DynamoDB. "Low-RPO cross-Region relational DR" → Aurora Global Database.`,
+       subtopics:["RDS Multi-AZ (availability) vs read replicas (read scaling)","Backups, point-in-time restore and encrypting existing databases","RDS Proxy for connection pooling","Aurora storage, replicas, Global Database and Serverless v2","DynamoDB keys, capacity modes, DAX, Streams, global tables, TTL","ElastiCache Redis vs Memcached; caching strategies"],
+       commands:[
+         {cmd:"aws rds modify-db-instance --db-instance-identifier app --multi-az --apply-immediately",desc:"Convert to Multi-AZ."},
+         {cmd:"aws rds create-db-proxy --db-proxy-name app-proxy --engine-family POSTGRESQL --auth file://auth.json --role-arn <role> --vpc-subnet-ids <sn-a> <sn-b>",desc:"Connection pooling in front of RDS."},
+         {cmd:"aws rds create-global-cluster --global-cluster-identifier app-global --source-db-cluster-identifier <aurora-arn>",desc:"Make an Aurora cluster global."},
+         {cmd:"aws dynamodb update-table --table-name Orders --replica-updates 'Create={RegionName=us-east-1}'",desc:"Add a Region to a global table."},
+         {cmd:"aws dax create-cluster --cluster-name orders-cache --node-type dax.r5.large --replication-factor 3 --iam-role-arn <role>",desc:"DAX cache for DynamoDB."},
+       ],
+       resources:[
+         {title:"Amazon RDS Multi-AZ",url:"https://aws.amazon.com/rds/features/multi-az/"},
+         {title:"Aurora Global Database",url:"https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database.html"},
+         {title:"DynamoDB best practices",url:"https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/best-practices.html"},
+       ]},
+      {title:"DNS, Content Delivery & the Edge",
+       keywords:["Route 53","routing policy","alias record","health check","CloudFront","origin access control","Global Accelerator","Edge Location","S3 Transfer Acceleration"],
+       explanation:`Global users expect low latency and high availability. Route 53, CloudFront and Global Accelerator solve different parts of that problem; the exam tests whether you can tell them apart.
+
+ROUTE 53: Route 53 is DNS, domain registration and health checking. Public hosted zones answer internet queries; private hosted zones answer inside your VPCs.
+Records: A/AAAA, CNAME, MX, TXT and so on. An alias record is Route 53-specific: it points to AWS resources (ALB, NLB, CloudFront, S3 website, API Gateway, another record), works at the zone apex (example.com), and queries to AWS targets are free. A CNAME cannot be used at the apex.
+
+ROUTING POLICIES:
+• Simple → one record, no health checks
+• Weighted → split traffic by percentage (canary releases, A/B testing)
+• Latency → send users to the Region with the lowest latency for them
+• Failover → active-passive; the primary is used while its health check passes
+• Geolocation → by the user's country or continent (compliance, localised content), with a default record
+• Geoproximity → by distance, with a bias to shift traffic (Traffic Flow)
+• Multivalue answer → up to eight healthy records, simple client-side load balancing
+• IP-based → by the client's IP range
+Every routing policy except simple can use a health check. Health checks can monitor endpoints, other health checks or CloudWatch alarms. DNS failover is limited by record TTLs and client caching.
+
+CLOUDFRONT: CloudFront is the CDN: each Edge Location around the world caches content close to users. Origins can be S3, an ALB, EC2, API Gateway or any HTTP server.
+• Use origin access control (OAC) so an S3 bucket stays private and only CloudFront can read it.
+• Cache behaviours route path patterns to different origins with different cache policies; TTLs and cache keys (headers, cookies, query strings) control hit ratio.
+• Signed URLs (one file) and signed cookies (many files) restrict access to paid or private content.
+• HTTPS with ACM certificates (issued in us-east-1), field-level encryption, geo-restriction and WAF integration.
+• Origin failover with origin groups; CloudFront Functions and Lambda@Edge customise requests at the edge.
+• Invalidations remove cached objects before they expire; versioned file names are usually better.
+
+GLOBAL ACCELERATOR: Global Accelerator gives two static anycast IP addresses that route users over the AWS global network to the nearest healthy Regional endpoint (ALB, NLB, EC2, Elastic IP). Failover happens in seconds without DNS caching delays. It does not cache content. Choose it for TCP/UDP applications such as gaming, IoT and VoIP, for fixed IPs that clients allow-list, or for fast multi-Region failover.
+
+CHOOSING:
+• Cache static or dynamic HTTP content near users → CloudFront
+• Improve performance of non-HTTP traffic or need static IPs → Global Accelerator
+• Speed up long-distance uploads into S3 → S3 Transfer Acceleration
+• Route users by location, latency or health → Route 53 routing policies`,
+       subtopics:["Hosted zones, alias records vs CNAME at the apex","Eight routing policies and when to use each","Health checks and DNS failover limits","CloudFront origins, OAC, cache behaviours, signed URLs/cookies","CloudFront security: HTTPS, WAF, geo-restriction","Global Accelerator vs CloudFront vs Transfer Acceleration"],
+       commands:[
+         {cmd:"aws route53 change-resource-record-sets --hosted-zone-id <z> --change-batch file://weighted.json",desc:"Weighted records for a 10% canary."},
+         {cmd:"aws route53 create-health-check --caller-reference $(date +%s) --health-check-config Type=HTTPS,FullyQualifiedDomainName=app.example.com,ResourcePath=/health",desc:"Endpoint health check."},
+         {cmd:"aws cloudfront create-invalidation --distribution-id <id> --paths '/index.html'",desc:"Remove a cached object."},
+         {cmd:"aws globalaccelerator create-accelerator --name game --ip-address-type IPV4 --region us-west-2",desc:"Static anycast IPs (Global Accelerator API runs in us-west-2)."},
+       ],
+       resources:[
+         {title:"Route 53 routing policies",url:"https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html"},
+         {title:"Restricting access to an S3 origin (OAC)",url:"https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html"},
+         {title:"AWS Global Accelerator",url:"https://aws.amazon.com/global-accelerator/"},
+       ]},
+      {title:"Decoupling: SQS, SNS, EventBridge & Kinesis",
+       keywords:["SQS","visibility timeout","dead-letter queue","SNS","fan-out","EventBridge","Kinesis Data Streams","Amazon Data Firehose","Step Functions"],
+       explanation:`Tightly coupled systems fail together. Messaging services let components scale and fail independently. "Decouple" in a question almost always means one of these services.
+
+SQS (QUEUES): SQS is a pull-based queue. Producers send messages; consumers poll, process and delete them. Messages wait (default 4 days, up to 14) until a consumer is ready, which absorbs traffic spikes.
+• Standard queues → nearly unlimited throughput, at-least-once delivery, best-effort ordering. Consumers must be idempotent.
+• FIFO queues → strict ordering within a message group and exactly-once processing with deduplication; throughput is limited compared with standard (higher with batching and high-throughput mode). Queue names end in .fifo.
+• The visibility timeout hides a received message while it is processed. If the consumer does not delete it in time, it reappears and is processed again, so set the timeout longer than the processing time.
+• A dead-letter queue collects messages that fail repeatedly (maxReceiveCount), so poison messages stop blocking the queue.
+• Long polling (WaitTimeSeconds up to 20) reduces empty responses and cost. Delay queues postpone delivery.
+• Scale consumers with an Auto Scaling group using queue depth (ApproximateNumberOfMessagesVisible) per instance, or let Lambda poll the queue.
+
+SNS (PUB/SUB): SNS pushes each published message to every subscriber: SQS queues, Lambda, HTTP endpoints, email, SMS and mobile push. Subscription filter policies deliver only matching messages. The fan-out pattern publishes once to SNS with several SQS queues subscribed, so each downstream system processes independently and durably. SNS FIFO topics pair with SQS FIFO queues for ordered fan-out.
+
+EVENTBRIDGE: EventBridge is a serverless event bus. AWS services, SaaS partners and your applications send events; rules match event patterns and route them to targets (Lambda, Step Functions, SQS, SNS, API destinations, other buses or accounts). EventBridge Scheduler runs cron or one-time schedules. Archive and replay help debugging. Choose it for event-driven integration across many services and accounts.
+
+STREAMING: Kinesis Data Streams ingests real-time streams (clickstreams, IoT telemetry, logs) into shards, keeps records for 24 hours by default (up to 365 days) for replay, and lets several consumers read in order per shard. On-demand mode scales automatically. Amazon Data Firehose (formerly Kinesis Data Firehose) delivers streaming data to S3, Redshift, OpenSearch, Splunk and HTTP endpoints with buffering, compression and optional Lambda transformation. It is fully managed and near real-time, with no consumers to write. Amazon MSK provides managed Apache Kafka.
+
+ORCHESTRATION: Step Functions coordinates multi-step workflows (Lambda, ECS, DynamoDB and more) with state, retries, parallel branches, waits and human approval steps. Standard workflows run up to a year; Express workflows suit high-volume short tasks.
+
+CHOOSING:
+• One consumer group, buffer work, retry → SQS
+• Many subscribers to the same message → SNS (fan-out to SQS)
+• Route events by content across services/accounts, or schedules → EventBridge
+• High-volume ordered real-time streams with replay → Kinesis Data Streams
+• Load streaming data into S3/Redshift/OpenSearch with no code → Firehose
+• Multi-step business process with error handling → Step Functions`,
+       subtopics:["SQS standard vs FIFO; at-least-once vs exactly-once","Visibility timeout, dead-letter queues, long polling","Scaling consumers on queue depth","SNS pub/sub, filter policies and SNS-to-SQS fan-out","EventBridge rules, buses and Scheduler","Kinesis Data Streams vs Firehose vs MSK; Step Functions"],
+       commands:[
+         {cmd:"aws sqs set-queue-attributes --queue-url <url> --attributes '{\"RedrivePolicy\":\"{\\\"deadLetterTargetArn\\\":\\\"<dlq-arn>\\\",\\\"maxReceiveCount\\\":\\\"5\\\"}\",\"VisibilityTimeout\":\"120\"}'",desc:"Add a DLQ and a 2-minute visibility timeout."},
+         {cmd:"aws sns subscribe --topic-arn <t> --protocol sqs --notification-endpoint <q-arn>",desc:"Fan-out subscription."},
+         {cmd:"aws events put-rule --name s3-uploads --event-pattern file://pattern.json",desc:"Match events by content."},
+         {cmd:"aws kinesis create-stream --stream-name clicks --stream-mode-details StreamMode=ON_DEMAND",desc:"On-demand data stream."},
+         {cmd:"aws stepfunctions start-execution --state-machine-arn <arn> --input file://order.json",desc:"Run a workflow."},
+       ],
+       resources:[
+         {title:"Amazon SQS FAQs",url:"https://aws.amazon.com/sqs/faqs/"},
+         {title:"Common SNS scenarios (fan-out)",url:"https://docs.aws.amazon.com/sns/latest/dg/sns-common-scenarios.html"},
+         {title:"Amazon EventBridge",url:"https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-what-is.html"},
+       ]},
+      {title:"Serverless & Containers",
+       keywords:["Lambda","API Gateway","ECS","Fargate","EKS","ECR","Cognito","RDS Proxy","DynamoDB"],
+       explanation:`"Least operational overhead" usually points here. Know what each compute option manages for you and where its limits are.
+
+LAMBDA: Lambda runs code in response to events (API Gateway, S3, DynamoDB Streams, SQS, EventBridge, Kinesis and many more) without servers. You pay per request and per millisecond of duration.
+• Limits that drive exam answers: maximum 15 minutes per invocation, up to 10 GB of memory (CPU scales with memory), 10 GB ephemeral /tmp storage, deployment as a zip or a container image up to 10 GB.
+• Concurrency: each concurrent request uses one execution environment. Reserved concurrency guarantees and caps capacity for a function; provisioned concurrency keeps environments warm to avoid cold starts.
+• Lambda in a VPC can reach private resources such as RDS; use RDS Proxy to avoid exhausting database connections.
+• Event sources: synchronous (API Gateway), asynchronous (S3, SNS, EventBridge, with retries and destinations) and polling (SQS, Kinesis, DynamoDB Streams).
+• Jobs longer than 15 minutes or needing special hardware belong on ECS/Fargate, Batch or EC2.
+
+API GATEWAY: API Gateway fronts backends with REST APIs (feature-rich: API keys, usage plans, request validation, caching), HTTP APIs (cheaper, faster, simpler, JWT authorisers) and WebSocket APIs (real-time two-way). It adds throttling, authorisation (IAM, Cognito, Lambda authorisers), stages and custom domains. Endpoint types: edge-optimised, Regional and private (only from a VPC through an interface endpoint).
+
+COGNITO: Cognito user pools provide sign-up, sign-in, MFA and social or SAML login for app users, issuing JWTs that API Gateway and ALB can validate. Identity pools exchange those identities for temporary AWS credentials so mobile apps can call S3 or DynamoDB directly with scoped permissions.
+
+CONTAINERS: Containers package an app and its dependencies.
+• ECR stores images, with vulnerability scanning and lifecycle rules.
+• ECS is AWS's orchestrator. Task definitions describe containers; services keep tasks running behind a load balancer and scale them. Give each task its own IAM task role.
+• Fargate is the serverless launch type for ECS and EKS: no instances to patch or scale; you set CPU and memory per task. The EC2 launch type gives more control (GPUs, specific instance types, cheaper at steady high utilisation, Spot capacity providers).
+• EKS runs managed Kubernetes for teams standardised on Kubernetes or needing portability. Workers can be managed node groups, Karpenter-provisioned EC2 or Fargate.
+• App Runner deploys a web app from source or an image with almost no configuration.
+
+PATTERNS: The classic serverless web stack is CloudFront + S3 for the front end, API Gateway + Lambda for the API and DynamoDB for data, with Cognito for users. S3 upload → event → Lambda → thumbnail is the canonical event-driven example. When a containerised app must run without managing servers, the answer is ECS on Fargate.`,
+       subtopics:["Lambda pricing, limits (15 min, 10 GB) and concurrency","Event sources: sync, async and polling","API Gateway REST vs HTTP vs WebSocket; throttling and auth","Cognito user pools vs identity pools","ECS tasks and services; Fargate vs EC2 launch type","EKS and when Kubernetes is the right answer"],
+       commands:[
+         {cmd:"aws lambda put-provisioned-concurrency-config --function-name api --qualifier live --provisioned-concurrent-executions 20",desc:"Remove cold starts for latency-sensitive functions."},
+         {cmd:"aws lambda create-event-source-mapping --function-name worker --event-source-arn <sqs-arn> --batch-size 10",desc:"Let Lambda consume an SQS queue."},
+         {cmd:"aws ecs register-task-definition --cli-input-json file://taskdef.json",desc:"Describe containers, CPU, memory and task role."},
+         {cmd:"aws application-autoscaling register-scalable-target --service-namespace ecs --resource-id service/prod/api --scalable-dimension ecs:service:DesiredCount --min-capacity 2 --max-capacity 10",desc:"Enable auto scaling for an ECS service."},
+       ],
+       resources:[
+         {title:"AWS Lambda quotas",url:"https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html"},
+         {title:"Choosing between REST and HTTP APIs",url:"https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-vs-rest.html"},
+         {title:"Amazon ECS on AWS Fargate",url:"https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html"},
+       ]},
+    ],
+    labs:[
+      {title:"Lab 6: ALB + Auto Scaling",difficulty:"Medium",desc:"Create a launch template with user data, an ALB in two public subnets, a target group with a /health check, and an Auto Scaling group (min 2, max 6) in two private subnets with ELB health checks and a target tracking policy at 50% CPU. Terminate an instance and watch it be replaced.",solution:"aws ec2 create-launch-template --launch-template-name web --launch-template-data file://lt.json\naws elbv2 create-target-group --name web-tg --protocol HTTP --port 80 --vpc-id <vpc> --health-check-path /health\naws elbv2 create-load-balancer --name web-alb --subnets <pub-a> <pub-b> --security-groups <sg-alb>\naws elbv2 create-listener --load-balancer-arn <alb> --protocol HTTP --port 80 --default-actions Type=forward,TargetGroupArn=<tg>\naws autoscaling create-auto-scaling-group --auto-scaling-group-name web-asg --launch-template LaunchTemplateName=web --min-size 2 --max-size 6 --vpc-zone-identifier '<priv-a>,<priv-b>' --target-group-arns <tg> --health-check-type ELB\naws autoscaling put-scaling-policy --auto-scaling-group-name web-asg --policy-name cpu50 --policy-type TargetTrackingScaling --target-tracking-configuration file://cpu50.json\naws ec2 terminate-instances --instance-ids <one>\naws autoscaling describe-scaling-activities --auto-scaling-group-name web-asg --max-items 3"},
+      {title:"Lab 7: RDS Multi-AZ & Replica",difficulty:"Medium",desc:"Launch an encrypted Multi-AZ PostgreSQL instance in private subnets with the master password managed by Secrets Manager. Add a read replica, force a failover and measure how long the endpoint is unavailable. Then restore to a point in time as a new instance.",solution:"aws rds create-db-subnet-group --db-subnet-group-name lab --db-subnet-group-description lab --subnet-ids <priv-a> <priv-b>\naws rds create-db-instance --db-instance-identifier lab-db --engine postgres --db-instance-class db.t4g.micro --allocated-storage 20 --multi-az --storage-encrypted --db-subnet-group-name lab --master-username labadmin --manage-master-user-password --no-publicly-accessible\naws rds create-db-instance-read-replica --db-instance-identifier lab-db-ro --source-db-instance-identifier lab-db\naws rds reboot-db-instance --db-instance-identifier lab-db --force-failover\naws rds describe-events --source-identifier lab-db --source-type db-instance --duration 30\naws rds restore-db-instance-to-point-in-time --source-db-instance-identifier lab-db --target-db-instance-identifier lab-db-pitr --use-latest-restorable-time"},
+      {title:"Lab 8: Global Delivery",difficulty:"Hard",desc:"Put a private S3 bucket behind CloudFront with origin access control and HTTPS. Add a second cache behaviour for /api/* to an ALB origin with caching disabled. Create Route 53 latency records for two Regional ALBs with health checks.",solution:"aws cloudfront create-origin-access-control --origin-access-control-config Name=oac,SigningProtocol=sigv4,SigningBehavior=always,OriginAccessControlOriginType=s3\naws cloudfront create-distribution --distribution-config file://dist.json   # S3 default behaviour + /api/* ALB behaviour with CachingDisabled policy\naws s3api put-bucket-policy --bucket site --policy file://oac-policy.json\naws route53 create-health-check --caller-reference eu-$(date +%s) --health-check-config Type=HTTPS,FullyQualifiedDomainName=eu-alb.example.com,ResourcePath=/health\naws route53 change-resource-record-sets --hosted-zone-id <z> --change-batch file://latency.json   # two alias records, SetIdentifier eu/us, Region set, HealthCheckId"},
+      {title:"Lab 9: Fan-out with DLQ",difficulty:"Medium",desc:"Create an SNS topic with two subscribed SQS queues, each with a dead-letter queue (maxReceiveCount 3). Add a filter policy so one queue receives only priority=high messages. Publish test messages and confirm routing. Make a consumer fail repeatedly and find the message in the DLQ.",solution:"aws sns create-topic --name events\naws sqs create-queue --queue-name a-dlq && aws sqs create-queue --queue-name a --attributes file://a-attrs.json\naws sqs create-queue --queue-name b-dlq && aws sqs create-queue --queue-name b --attributes file://b-attrs.json\naws sns subscribe --topic-arn <t> --protocol sqs --notification-endpoint <a-arn>\naws sns subscribe --topic-arn <t> --protocol sqs --notification-endpoint <b-arn> --attributes '{\"FilterPolicy\":\"{\\\"priority\\\":[\\\"high\\\"]}\"}'\naws sns publish --topic-arn <t> --message hi --message-attributes '{\"priority\":{\"DataType\":\"String\",\"StringValue\":\"high\"}}'\n# receive from queue a 3 times without deleting, then:\naws sqs receive-message --queue-url <a-dlq-url>"},
+      {title:"Lab 10: Serverless API",difficulty:"Hard",desc:"Build an HTTP API in API Gateway backed by a Lambda function that writes to an on-demand DynamoDB table. Scope the function role to the single table, add throttling, and protect the route with a Cognito user pool JWT authoriser.",solution:"aws dynamodb create-table --table-name Notes --attribute-definitions AttributeName=id,AttributeType=S --key-schema AttributeName=id,KeyType=HASH --billing-mode PAY_PER_REQUEST\naws iam create-role --role-name notes-fn --assume-role-policy-document file://lambda-trust.json\naws iam put-role-policy --role-name notes-fn --policy-name ddb --policy-document file://notes-ddb.json\naws lambda create-function --function-name notes --runtime python3.12 --handler app.handler --role <role> --zip-file fileb://app.zip\naws apigatewayv2 create-api --name notes --protocol-type HTTP --target <fn-arn>\naws lambda add-permission --function-name notes --statement-id api --action lambda:InvokeFunction --principal apigateway.amazonaws.com\naws cognito-idp create-user-pool --pool-name notes-users\naws apigatewayv2 create-authorizer --api-id <id> --authorizer-type JWT --identity-source '$request.header.Authorization' --name cognito --jwt-configuration Audience=<client-id>,Issuer=https://cognito-idp.<region>.amazonaws.com/<pool-id>"},
+    ],
+    assessment:{title:"L2 Resilient & High-Performing Quiz",questions:[
+      {q:"An application must route /api/* and /images/* to different target groups. Which load balancer?",options:["Network Load Balancer","Application Load Balancer","Gateway Load Balancer","Classic Load Balancer"],answer:1,explain:"Path-based routing is a layer 7 feature of the ALB."},
+      {q:"A game server uses UDP and clients must allow-list fixed IP addresses. Which load balancer?",options:["Application Load Balancer","Network Load Balancer with Elastic IPs","Gateway Load Balancer","CloudFront"],answer:1,explain:"NLB supports UDP and a static or Elastic IP per AZ."},
+      {q:"Instances pass EC2 status checks but the app returns errors, and Auto Scaling does not replace them. What should you change?",options:["Use a larger instance type","Set the Auto Scaling group health check type to ELB","Add a lifecycle hook","Enable cross-zone load balancing"],answer:1,explain:"With ELB health checks, instances failing the load balancer's application check are replaced."},
+      {q:"Traffic surges every weekday at 09:00 and drops at 18:00. Which scaling approach fits best?",options:["Scheduled scaling","Manual scaling","Step scaling only on memory","A larger fixed fleet"],answer:0,explain:"Predictable time-based patterns suit scheduled actions, optionally combined with target tracking."},
+      {q:"What is the main purpose of RDS Multi-AZ?",options:["Scale read traffic","High availability with automatic failover","Cross-Region disaster recovery","Reduce cost"],answer:1,explain:"Multi-AZ maintains a synchronous standby for failover. Read replicas scale reads."},
+      {q:"Reporting queries are slowing the production MySQL database. What is the simplest fix?",options:["Enable Multi-AZ","Create a read replica and point reports at it","Increase the backup retention","Move to DynamoDB"],answer:1,explain:"A read replica offloads read-only workloads to a separate endpoint."},
+      {q:"Thousands of concurrent Lambda functions exhaust the RDS connection limit. What helps most?",options:["DAX","RDS Proxy","A read replica","Larger Lambda memory"],answer:1,explain:"RDS Proxy pools and shares connections, protecting the database from connection storms."},
+      {q:"A DynamoDB-backed app needs microsecond read latency without code changes to caching logic. What do you add?",options:["ElastiCache Memcached","DAX","A global table","Provisioned capacity"],answer:1,explain:"DAX is an API-compatible in-memory cache for DynamoDB."},
+      {q:"You need a relational database with cross-Region replication lag typically under one second for DR. Which option?",options:["RDS Multi-AZ","Aurora Global Database","DynamoDB global tables","RDS automated backups"],answer:1,explain:"Aurora Global Database replicates storage to other Regions with very low lag and fast promotion."},
+      {q:"You need the domain example.com (zone apex) to point to an ALB. Which record?",options:["CNAME","Route 53 alias record","MX","PTR"],answer:1,explain:"CNAMEs are not allowed at the apex. Alias records are, and queries to AWS targets are free."},
+      {q:"Users in Germany must be served from eu-central-1 for compliance, regardless of latency. Which routing policy?",options:["Latency","Geolocation","Weighted","Multivalue"],answer:1,explain:"Geolocation routes by the user's location, which suits compliance and localisation."},
+      {q:"How do you keep an S3 bucket private while serving its content through CloudFront?",options:["Make the bucket public-read","Origin access control with a bucket policy allowing only the distribution","Use S3 Transfer Acceleration","Enable S3 website hosting"],answer:1,explain:"OAC lets CloudFront sign requests; the bucket policy allows only that distribution."},
+      {q:"Several independent systems must each process every order event. What is the best pattern?",options:["One SQS queue shared by all","SNS topic fan-out to one SQS queue per system","Kinesis with one shard","Direct HTTP calls"],answer:1,explain:"SNS delivers each message to every subscribed queue, and each system consumes independently."},
+      {q:"SQS messages are processed twice because processing takes 90 seconds. What do you change?",options:["Enable FIFO","Increase the visibility timeout above the processing time","Use long polling","Add a dead-letter queue"],answer:1,explain:"If the visibility timeout expires before the message is deleted, it becomes visible and another consumer processes it."},
+      {q:"A job runs for 40 minutes. Which compute choice is wrong for it?",options:["ECS on Fargate","AWS Batch","Lambda","EC2"],answer:2,explain:"Lambda invocations are limited to 15 minutes."},
+    ]}
+  },
+
+  {
+    id:"advanced",level:"ADVANCED",title:"Secure, Hybrid & Cost-Optimised",subtitle:"Protection, Connectivity, DR, Data & Cost",duration:"Weeks 9–12",
+    color:T.amber,icon:"✦",badge:"L3",
+    topics:[
+      {title:"Data Protection & Security Services",
+       keywords:["KMS","envelope encryption","Secrets Manager","Parameter Store","ACM","WAF","Shield","GuardDuty","Macie","Inspector","CloudTrail","AWS Config","Cognito"],
+       explanation:`Domain 1 (Design Secure Architectures) is 30% of the exam. Beyond IAM, you must match each security requirement to the right managed service.
+
+ENCRYPTION AT REST WITH KMS: KMS creates and manages keys that S3, EBS, RDS, DynamoDB, EFS, SQS and most other services use.
+• AWS managed keys (aws/s3, aws/ebs) are free and automatic, but you cannot change their policies or share them across accounts.
+• Customer managed keys give you the key policy, grants, optional automatic rotation, the ability to disable keys, cross-account sharing and a CloudTrail record of every use. Choose them when a question says "control", "audit key usage", "rotate" or "cross-account".
+• With envelope encryption, services encrypt data with a data key, and KMS encrypts the data key. That is why large objects never travel to KMS.
+• Multi-Region keys let you decrypt in another Region without re-encrypting, useful for DR and global tables.
+• CloudHSM provides dedicated, single-tenant hardware security modules when you must control the HSM itself (FIPS 140-3 Level 3, custom key stores).
+S3 encryption options: SSE-S3 (default, AWS-managed keys), SSE-KMS (KMS keys, auditable; Bucket Keys reduce request costs), DSSE-KMS (dual layer) and SSE-C (you supply the key) or client-side encryption.
+
+ENCRYPTION IN TRANSIT: ACM issues free public TLS certificates with automatic renewal for ALB, NLB, CloudFront and API Gateway (not for direct installation on EC2). Enforce HTTPS with ALB redirects, CloudFront viewer policies, and bucket policies denying aws:SecureTransport false.
+
+SECRETS: Secrets Manager stores database credentials and API keys with automatic rotation (built in for RDS, Aurora, Redshift and DocumentDB; custom rotation with Lambda) and cross-Region replication. Parameter Store (Systems Manager) holds configuration and SecureString secrets; the standard tier is free but has no built-in rotation. Rule of thumb: rotation required → Secrets Manager.
+
+PERIMETER PROTECTION:
+• WAF filters layer 7 requests on CloudFront, ALB, API Gateway, AppSync and Cognito: managed rule groups (OWASP, known bad inputs), SQL injection and XSS rules, rate-based rules, geo-matching and IP sets.
+• Shield Standard protects every customer against common network and transport-layer DDoS attacks for free. Shield Advanced adds enhanced detection, the Shield Response Team, cost protection for scaling during attacks and WAF at no extra charge.
+• Firewall Manager applies WAF, Shield, security group and Network Firewall policies across an organisation.
+• AWS Network Firewall provides stateful inspection and domain filtering at the VPC level.
+
+DETECTION AND COMPLIANCE:
+• GuardDuty → threat detection from CloudTrail, VPC Flow Logs, DNS logs, S3, EKS and runtime data (cryptomining, credential exfiltration, unusual API calls)
+• Macie → finds personal and sensitive data in S3 buckets
+• Inspector → continuous vulnerability scanning of EC2, ECR images and Lambda
+• Security Hub → aggregates findings and runs best-practice checks across accounts
+• Detective → investigates the root cause of findings
+• CloudTrail → who did what, when; AWS Config → what a resource looked like and whether it complies with rules, with automatic remediation
+• Artifact → AWS compliance reports (SOC, PCI, ISO)
+
+APPLICATION USERS: Cognito user pools authenticate customers (sign-up, MFA, social and SAML login); identity pools give them scoped temporary AWS credentials.`,
+       subtopics:["AWS managed vs customer managed KMS keys; rotation; multi-Region keys; CloudHSM","S3 encryption options: SSE-S3, SSE-KMS, DSSE-KMS, SSE-C","TLS with ACM and enforcing HTTPS","Secrets Manager vs Parameter Store","WAF, Shield Standard/Advanced, Firewall Manager, Network Firewall","GuardDuty, Macie, Inspector, Security Hub, CloudTrail, Config"],
+       commands:[
+         {cmd:"aws kms create-key --multi-region --description 'global data key'",desc:"Multi-Region primary key."},
+         {cmd:"aws kms enable-key-rotation --key-id <id>",desc:"Automatic yearly rotation."},
+         {cmd:"aws secretsmanager create-secret --name prod/db --secret-string file://creds.json",desc:"Store a database secret."},
+         {cmd:"aws wafv2 create-web-acl --name app-acl --scope REGIONAL --default-action Allow={} --rules file://rules.json --visibility-config SampledRequestsEnabled=true,CloudWatchMetricsEnabled=true,MetricName=app",desc:"WAF web ACL for an ALB."},
+         {cmd:"aws macie2 enable-macie",desc:"Start sensitive data discovery in S3."},
+       ],
+       resources:[
+         {title:"AWS KMS concepts",url:"https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html"},
+         {title:"AWS WAF, Shield and Firewall Manager",url:"https://docs.aws.amazon.com/waf/latest/developerguide/what-is-aws-waf.html"},
+         {title:"AWS Security Reference Architecture",url:"https://docs.aws.amazon.com/prescriptive-guidance/latest/security-reference-architecture/welcome.html"},
+       ]},
+      {title:"Advanced Networking & Hybrid Connectivity",
+       keywords:["VPC endpoint","gateway endpoint","interface endpoint","PrivateLink","VPC peering","Transit Gateway","Site-to-Site VPN","Direct Connect","NAT Gateway"],
+       explanation:`Larger architectures connect many VPCs, accounts and on-premises networks. The exam tests which connectivity option fits a requirement for privacy, scale, bandwidth or cost.
+
+PRIVATE ACCESS TO AWS SERVICES: A VPC endpoint lets private resources reach AWS services without an Internet Gateway, NAT Gateway or public IPs.
+• A gateway endpoint exists for S3 and DynamoDB only. It is free and works through route table entries. It also removes NAT Gateway data processing charges for that traffic, a common cost answer.
+• An interface endpoint (powered by PrivateLink) creates an ENI with a private IP in your subnets for most other services (Secrets Manager, SQS, KMS, ECR, CloudWatch and S3 too). It is charged per hour and per GB, reachable from on-premises over VPN or Direct Connect, and private DNS keeps service names unchanged.
+• Endpoint policies and conditions such as aws:SourceVpce on bucket policies restrict access to the endpoint path.
+
+SHARING YOUR OWN SERVICE: PrivateLink exposes a service behind an NLB to other VPCs and accounts through interface endpoints. Consumers see only that service, not your whole network, and overlapping CIDRs are not a problem. It is the answer for SaaS providers and for sharing one service with hundreds of VPCs.
+
+VPC TO VPC:
+• VPC peering → a private one-to-one link, across accounts and Regions. It is not transitive: if A peers with B and B with C, A cannot reach C. CIDRs must not overlap, and you must update route tables on both sides.
+• Transit Gateway → a Regional hub that attaches VPCs, VPNs and Direct Connect gateways with transitive routing and route tables for segmentation. It scales to thousands of VPCs, can peer with Transit Gateways in other Regions, and can be shared across accounts with Resource Access Manager. Choose it when a mesh of peering connections would be unmanageable.
+
+ON-PREMISES TO AWS:
+• Site-to-Site VPN → an encrypted IPsec tunnel pair over the internet to a virtual private gateway or Transit Gateway. Set up in minutes, lower cost, but bandwidth and latency vary with the internet. Accelerated VPN uses Global Accelerator.
+• Direct Connect → a dedicated private connection from your data centre or a colocation facility at 1, 10, 100 Gbps (or hosted connections at lower speeds). Consistent latency and lower data transfer cost, but it takes weeks to provision and is not encrypted by default. Add MACsec or run a VPN over Direct Connect for encryption. A Direct Connect gateway reaches VPCs in many Regions.
+• Resilience: for critical workloads use two Direct Connect connections at different locations, or Direct Connect with a Site-to-Site VPN as a cheaper backup.
+• Client VPN gives individual users remote access to a VPC.
+
+DNS ACROSS NETWORKS: Route 53 Resolver inbound endpoints let on-premises servers resolve private hosted zones; outbound endpoints with forwarding rules let VPC resources resolve on-premises names.
+
+EXAM PATTERNS: "Private subnet needs S3 without NAT costs" → gateway endpoint. "Hundreds of VPCs need connectivity" → Transit Gateway. "Expose one service to other accounts privately" → PrivateLink. "Encrypted connection to on-premises this week" → Site-to-Site VPN. "Consistent high bandwidth to on-premises" → Direct Connect (plus VPN for backup or encryption).`,
+       subtopics:["Gateway endpoints (S3, DynamoDB, free) vs interface endpoints (PrivateLink, paid)","Restricting access with endpoint policies and aws:SourceVpce","PrivateLink for exposing services across accounts","VPC peering (non-transitive) vs Transit Gateway (hub, transitive)","Site-to-Site VPN vs Direct Connect; resilience and encryption","Route 53 Resolver endpoints for hybrid DNS"],
+       commands:[
+         {cmd:"aws ec2 create-vpc-endpoint --vpc-id <vpc> --service-name com.amazonaws.<region>.dynamodb --route-table-ids <rt>",desc:"Free gateway endpoint for DynamoDB."},
+         {cmd:"aws ec2 create-vpc-endpoint-service-configuration --network-load-balancer-arns <nlb-arn> --acceptance-required",desc:"Publish your service through PrivateLink."},
+         {cmd:"aws ec2 create-transit-gateway --description hub",desc:"Create a Transit Gateway."},
+         {cmd:"aws ec2 create-vpn-connection --type ipsec.1 --customer-gateway-id <cgw> --transit-gateway-id <tgw>",desc:"Site-to-Site VPN to the TGW."},
+         {cmd:"aws directconnect describe-connections",desc:"List Direct Connect connections."},
+       ],
+       resources:[
+         {title:"AWS PrivateLink and VPC endpoints",url:"https://docs.aws.amazon.com/vpc/latest/privatelink/what-is-privatelink.html"},
+         {title:"Building a scalable multi-VPC network (whitepaper)",url:"https://docs.aws.amazon.com/whitepapers/latest/building-scalable-secure-multi-vpc-network-infrastructure/welcome.html"},
+         {title:"Hybrid connectivity options",url:"https://docs.aws.amazon.com/whitepapers/latest/hybrid-connectivity/hybrid-connectivity.html"},
+       ]},
+      {title:"Disaster Recovery, Backup & Migration",
+       keywords:["RPO","RTO","backup and restore","pilot light","warm standby","multi-site active-active","AWS Backup","DMS","DataSync","Snowball","Storage Gateway","S3 Replication"],
+       explanation:`Resilience questions often give you an RPO, an RTO and a budget and ask for the cheapest strategy that meets them. Migration questions ask how to move data or databases with the least downtime or effort.
+
+DR STRATEGIES, from cheapest and slowest to most expensive and fastest:
+• backup and restore → regular backups copied to another Region; rebuild infrastructure (ideally with infrastructure as code) after a disaster. RPO and RTO measured in hours.
+• pilot light → data replicated continuously to the DR Region (database replicas, S3 Replication); core infrastructure defined but compute switched off or at zero. RPO minutes, RTO tens of minutes.
+• warm standby → a scaled-down but fully functional copy of production always running; scale up and switch traffic on failover. RPO seconds to minutes, RTO minutes.
+• multi-site active-active → full production serving traffic in two or more Regions (Route 53 latency or weighted routing, DynamoDB global tables, Aurora Global Database). Near-zero RPO and RTO, highest cost.
+Match the lowest-cost option that still meets both the RPO and the RTO.
+
+BACKUP: AWS Backup centrally manages policies (backup plans) for EC2/EBS, RDS, Aurora, DynamoDB, EFS, FSx, S3, Storage Gateway and more. It copies backups across Regions and accounts, and Backup Vault Lock makes them immutable against ransomware or insider deletion. Service-native options remain: EBS snapshots with Data Lifecycle Manager, RDS automated backups, DynamoDB point-in-time recovery and S3 versioning plus replication.
+
+ELASTIC DISASTER RECOVERY (DRS) continuously replicates on-premises or cloud servers at block level into a low-cost staging area and launches them in minutes for recovery.
+
+MIGRATING DATABASES: DMS migrates databases with minimal downtime: a full load followed by change data capture (CDC) keeps the target in sync until cut-over. Homogeneous migrations (MySQL to RDS MySQL) need only DMS; heterogeneous ones (Oracle to Aurora PostgreSQL) also need the Schema Conversion Tool (or DMS Schema Conversion) for schema and code.
+
+MOVING FILES AND OBJECTS:
+• DataSync → online transfer of large file sets from NFS, SMB, HDFS or object storage to S3, EFS or FSx, with scheduling, encryption, integrity checks and bandwidth limits. Also moves data between AWS storage services.
+• Snowball → rugged devices for offline transfer of terabytes to petabytes when the network would take too long (rule of thumb: more than about a week), or for edge computing in disconnected locations.
+• Transfer Family → managed SFTP, FTPS and FTP endpoints backed by S3 or EFS for partners who still use those protocols.
+• S3 Transfer Acceleration and multipart upload → faster long-distance uploads over the internet.
+
+HYBRID STORAGE: Storage Gateway lets on-premises applications use AWS storage with a local cache:
+• S3 File Gateway → NFS/SMB shares stored as objects in S3
+• FSx File Gateway → low-latency on-premises access to FSx for Windows File Server
+• Volume Gateway → iSCSI block volumes backed by S3 with EBS snapshots (cached or stored mode)
+• Tape Gateway → virtual tape library for existing backup software, archived to Glacier
+
+MIGRATION PROGRAMME: Application Migration Service (MGN) rehosts servers (lift and shift) with continuous replication; Migration Hub tracks progress; Application Discovery Service inventories on-premises servers.`,
+       subtopics:["RPO and RTO; matching requirements to cost","Backup and restore, pilot light, warm standby, active-active","AWS Backup, cross-Region copies, Vault Lock; Elastic Disaster Recovery","DMS with CDC; SCT for heterogeneous migrations","DataSync vs Snowball vs Transfer Family","Storage Gateway types; Application Migration Service"],
+       commands:[
+         {cmd:"aws backup create-backup-plan --backup-plan file://plan.json",desc:"Daily backups with a cross-Region copy rule."},
+         {cmd:"aws backup put-backup-vault-lock-configuration --backup-vault-name prod --min-retention-days 30",desc:"Make backups immutable."},
+         {cmd:"aws dms create-replication-task --replication-task-identifier ora-to-aurora --migration-type full-load-and-cdc --source-endpoint-arn <src> --target-endpoint-arn <tgt> --replication-instance-arn <ri> --table-mappings file://map.json",desc:"Full load plus ongoing replication."},
+         {cmd:"aws datasync create-task --source-location-arn <nfs> --destination-location-arn <s3> --schedule ScheduleExpression='cron(0 1 * * ? *)'",desc:"Nightly file sync to S3."},
+         {cmd:"aws snowball create-job --job-type IMPORT --resources file://res.json --address-id <addr> --role-arn <role> --snowball-capacity-preference T80",desc:"Order a Snowball for an import."},
+       ],
+       resources:[
+         {title:"Disaster recovery options in the cloud (whitepaper)",url:"https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html"},
+         {title:"AWS Database Migration Service",url:"https://docs.aws.amazon.com/dms/latest/userguide/Welcome.html"},
+         {title:"AWS Storage Gateway",url:"https://docs.aws.amazon.com/storagegateway/latest/userguide/WhatIsStorageGateway.html"},
+       ]},
+      {title:"Analytics, Data Lakes & Caching",
+       keywords:["Athena","Glue","Redshift","EMR","OpenSearch Service","QuickSight","Lake Formation","Kinesis Data Streams","Amazon Data Firehose","ElastiCache","S3"],
+       explanation:`High-performing architecture questions include data ingestion, transformation and analytics. Learn which service does which job; you rarely need deep configuration detail.
+
+THE DATA LAKE PATTERN: Store raw data cheaply in S3 (the lake), catalogue it, transform it into efficient formats, then query or visualise it.
+• Ingest → Kinesis Data Streams for real-time streams, Amazon Data Firehose to land streams into S3 or Redshift, DMS for databases, DataSync or Transfer Family for files, AppFlow for SaaS data.
+• Catalogue and transform → Glue: crawlers infer schemas into the Glue Data Catalog; Glue ETL jobs (serverless Spark) clean and convert data; Glue DataBrew offers no-code preparation.
+• Govern → Lake Formation adds fine-grained permissions (database, table, column, row and cell level) and cross-account sharing on top of the catalogue.
+• Query → Athena runs serverless SQL directly on S3 and charges per TB scanned. Partition data (year=/month=/day=) and convert to columnar formats such as Parquet or ORC with compression to cut cost and time dramatically.
+• Visualise → QuickSight builds serverless BI dashboards from Athena, Redshift, RDS, S3 and more.
+
+DATA WAREHOUSING: Redshift is a columnar, massively parallel data warehouse for complex analytical (OLAP) queries over structured data, with Redshift Serverless for variable workloads. Redshift Spectrum queries data in S3 without loading it. Choose Redshift for frequent complex BI queries joining large datasets; Athena for ad hoc or occasional queries on S3.
+
+BIG DATA PROCESSING: EMR runs Apache Spark, Hadoop, Hive, Presto and HBase on managed clusters (on EC2, EKS or serverless). Use it when you need those frameworks or fine control; Spot Instances for task nodes cut cost.
+
+SEARCH AND LOGS: OpenSearch Service provides full-text search and log analytics with dashboards. Firehose can stream logs into it.
+
+STREAMING ANALYTICS: Managed Service for Apache Flink processes streams in real time (windowed aggregations, anomaly detection) from Kinesis Data Streams or MSK.
+
+CACHING FOR PERFORMANCE: Caching is the classic performance answer.
+• ElastiCache → in front of databases for repeated queries, leaderboards (Redis sorted sets) and session storage
+• DAX → in front of DynamoDB
+• CloudFront → at the edge for content and API responses
+• API Gateway caching → for REST API responses
+Caches need an invalidation or TTL strategy, and lazy loading can serve stale data.
+
+PURPOSE-BUILT CHOICES: Choose services by access pattern: transactional relational (RDS/Aurora), key-value at scale (DynamoDB), analytics (Redshift/Athena), search (OpenSearch), graph (Neptune), time series (Timestream). The exam rewards matching the data access pattern to the purpose-built service.`,
+       subtopics:["S3 data lake: ingest, catalogue, transform, query, visualise","Glue crawlers, Data Catalog and ETL; Lake Formation permissions","Athena cost optimisation with partitions and Parquet","Redshift vs Athena vs EMR","OpenSearch for search and logs; Flink for streaming analytics","Caching layers: ElastiCache, DAX, CloudFront, API Gateway"],
+       commands:[
+         {cmd:"aws glue start-crawler --name raw-clicks",desc:"Refresh table schemas and partitions."},
+         {cmd:"aws athena start-query-execution --query-string 'SELECT count(*) FROM logs WHERE dt = ''2026-10-01''' --work-group primary",desc:"Partition-filtered Athena query."},
+         {cmd:"aws firehose create-delivery-stream --delivery-stream-name logs-to-s3 --extended-s3-destination-configuration file://s3dest.json",desc:"Stream records into S3 with buffering."},
+         {cmd:"aws redshift-serverless create-workgroup --workgroup-name bi --namespace-name analytics",desc:"Serverless data warehouse."},
+         {cmd:"aws lakeformation grant-permissions --principal DataLakePrincipalIdentifier=<role-arn> --permissions SELECT --resource file://table-columns.json",desc:"Column-level access for analysts."},
+       ],
+       resources:[
+         {title:"Analytics on AWS overview",url:"https://docs.aws.amazon.com/whitepapers/latest/aws-overview/analytics.html"},
+         {title:"Top 10 performance tuning tips for Athena",url:"https://aws.amazon.com/blogs/big-data/top-10-performance-tuning-tips-for-amazon-athena/"},
+         {title:"Caching best practices",url:"https://aws.amazon.com/caching/best-practices/"},
+       ]},
+      {title:"Cost Optimisation, Monitoring & Governance",
+       keywords:["Cost Explorer","AWS Budgets","Compute Optimizer","Trusted Advisor","Cost and Usage Report","tagging","Savings Plans","Spot Instance","CloudWatch","AWS Organizations","Control Tower","NAT Gateway","gateway endpoint"],
+       explanation:`Domain 4 (Design Cost-Optimized Architectures) is 20% of the exam, and cost appears as a tie-breaker in many other questions. "Most cost-effective" means meeting every requirement at the lowest cost, not the cheapest service regardless of fit.
+
+VISIBILITY FIRST:
+• Cost Explorer → explore and forecast spend by service, account, Region or tag; get Savings Plans and RI recommendations.
+• AWS Budgets → alerts (and optional actions such as applying an SCP or stopping instances) when actual or forecast cost or usage exceeds thresholds.
+• Cost and Usage Report (CUR) → the most detailed billing data, delivered to S3 for Athena or QuickSight analysis.
+• tagging with cost allocation tags → attribute spend to teams, projects and environments.
+• Cost Anomaly Detection → machine-learning alerts on unusual spend.
+
+COMPUTE COSTS:
+• Right-size first with Compute Optimizer, then commit. Committing to oversized instances locks in waste.
+• Savings Plans for steady baseline usage (Compute Savings Plans are the most flexible: EC2 across families and Regions, Fargate and Lambda).
+• Spot Instance capacity for fault-tolerant work; mix with On-Demand in Auto Scaling groups.
+• Graviton instances for better price-performance; serverless (Lambda, Fargate) for spiky or low-utilisation workloads; stop dev and test environments out of hours with Instance Scheduler.
+
+STORAGE COSTS: S3 lifecycle rules and Intelligent-Tiering; delete incomplete multipart uploads and old versions; gp3 instead of gp2; delete unattached EBS volumes and old snapshots; EFS lifecycle to Infrequent Access; shorter CloudWatch Logs retention.
+
+NETWORK COSTS (often overlooked):
+• Data transfer into AWS is free; out to the internet is charged; between AZs is charged; within the same AZ over private IPs is free.
+• NAT Gateway charges per GB processed. Use gateway endpoint routes for S3 and DynamoDB instead.
+• CloudFront reduces origin data transfer and can be cheaper than serving directly from S3 or EC2.
+• Keep chatty components in the same AZ where resilience allows, and use private IPs.
+• Every public IPv4 address is billed hourly.
+
+DATABASE COSTS: Aurora Serverless v2 or DynamoDB on-demand for variable load; provisioned capacity with auto scaling or reserved nodes for steady load; read replicas or caching instead of a larger primary.
+
+MONITORING: CloudWatch collects metrics (default EC2 metrics every 5 minutes; detailed monitoring every minute), logs (Logs Insights for queries, metric filters), alarms (actions: SNS, Auto Scaling, EC2 recover/reboot) and dashboards. Memory and disk usage on EC2 need the CloudWatch agent. X-Ray traces requests through distributed applications.
+
+GOVERNANCE: AWS Organizations with consolidated billing gives volume discounts and shares Savings Plans across accounts. Control Tower sets up a governed multi-account landing zone with guardrails. Service Catalog offers pre-approved products. Trusted Advisor checks for idle resources, security gaps and service limits. Infrastructure as code (CloudFormation, CDK) makes environments reproducible, which is the foundation of cheap backup-and-restore DR.`,
+       subtopics:["Cost Explorer, Budgets, CUR, cost allocation tags, anomaly detection","Right-size, then Savings Plans; Spot; Graviton; serverless","Storage cost levers: lifecycle, Intelligent-Tiering, gp3, cleanup","Data transfer pricing: inter-AZ, internet egress, NAT vs endpoints, CloudFront","CloudWatch metrics, agent, logs, alarms; X-Ray","Organizations consolidated billing, Control Tower, Trusted Advisor, IaC"],
+       commands:[
+         {cmd:"aws ce create-anomaly-monitor --anomaly-monitor '{\"MonitorName\":\"services\",\"MonitorType\":\"DIMENSIONAL\",\"MonitorDimension\":\"SERVICE\"}'",desc:"Detect unusual spend per service."},
+         {cmd:"aws ce update-cost-allocation-tags-status --cost-allocation-tags-status TagKey=Project,Status=Active",desc:"Activate a cost allocation tag."},
+         {cmd:"aws compute-optimizer get-ebs-volume-recommendations",desc:"Right-size EBS volumes."},
+         {cmd:"aws cloudwatch put-metric-alarm --alarm-name recover --namespace AWS/EC2 --metric-name StatusCheckFailed_System --statistic Maximum --period 60 --evaluation-periods 2 --threshold 1 --comparison-operator GreaterThanOrEqualToThreshold --alarm-actions arn:aws:automate:<region>:ec2:recover --dimensions Name=InstanceId,Value=<id>",desc:"Auto-recover an instance on host failure."},
+         {cmd:"aws support describe-trusted-advisor-checks --language en",desc:"List Trusted Advisor checks (Business or Enterprise support)."},
+       ],
+       resources:[
+         {title:"Cost Optimization Pillar",url:"https://docs.aws.amazon.com/wellarchitected/latest/cost-optimization-pillar/welcome.html"},
+         {title:"Overview of data transfer costs",url:"https://aws.amazon.com/blogs/architecture/overview-of-data-transfer-costs-for-common-architectures/"},
+         {title:"Savings Plans user guide",url:"https://docs.aws.amazon.com/savingsplans/latest/userguide/what-is-savings-plans.html"},
+       ]},
+    ],
+    labs:[
+      {title:"Lab 11: KMS & Secrets",difficulty:"Medium",desc:"Create a customer managed KMS key with rotation. Set it as the default encryption for a bucket (with Bucket Keys) and as the EBS default key. Deny non-TLS requests to the bucket. Store a database password in Secrets Manager encrypted with the key and read it back.",solution:"aws kms create-key --description lab && aws kms create-alias --alias-name alias/lab --target-key-id <id>\naws kms enable-key-rotation --key-id <id>\naws s3api put-bucket-encryption --bucket lab-data --server-side-encryption-configuration file://sse-kms.json\naws s3api put-bucket-policy --bucket lab-data --policy file://deny-insecure.json\naws ec2 enable-ebs-encryption-by-default && aws ec2 modify-ebs-default-kms-key-id --kms-key-id alias/lab\naws secretsmanager create-secret --name lab/db --kms-key-id alias/lab --secret-string '{\"username\":\"app\",\"password\":\"S3cure!\"}'\naws secretsmanager get-secret-value --secret-id lab/db --query SecretString"},
+      {title:"Lab 12: Private Endpoints",difficulty:"Hard",desc:"Remove the NAT route from a private subnet. Add a gateway endpoint for S3 and an interface endpoint for SSM so Session Manager still works. Restrict a bucket so it accepts requests only through the gateway endpoint, and prove access fails from outside the VPC.",solution:"aws ec2 delete-route --route-table-id <priv-rt> --destination-cidr-block 0.0.0.0/0\naws ec2 create-vpc-endpoint --vpc-id <vpc> --service-name com.amazonaws.<region>.s3 --route-table-ids <priv-rt>\nfor s in ssm ssmmessages ec2messages; do aws ec2 create-vpc-endpoint --vpc-endpoint-type Interface --vpc-id <vpc> --service-name com.amazonaws.<region>.$s --subnet-ids <priv-a> --security-group-ids <sg-443> --private-dns-enabled; done\naws s3api put-bucket-policy --bucket lab-private --policy file://deny-not-vpce.json\naws ssm start-session --target <private-instance>   # then: aws s3 ls s3://lab-private  (works)\naws s3 ls s3://lab-private   # from laptop: AccessDenied"},
+      {title:"Lab 13: Backup & Cross-Region DR",difficulty:"Hard",desc:"Create an AWS Backup plan that backs up resources tagged Backup=daily every night, keeps them 35 days and copies them to a vault in a second Region. Lock the vault. Copy an AMI to the DR Region and create a cross-Region RDS read replica. Promote it to simulate failover.",solution:"aws backup create-backup-vault --backup-vault-name dr --region eu-central-1\naws backup create-backup-plan --backup-plan file://plan.json   # rule: cron(0 2 * * ? *), lifecycle 35d, CopyActions to dr vault ARN\naws backup create-backup-selection --backup-plan-id <id> --backup-selection file://by-tag.json\naws backup put-backup-vault-lock-configuration --backup-vault-name dr --min-retention-days 7 --region eu-central-1\naws ec2 copy-image --source-region eu-west-1 --source-image-id <ami> --name app-dr --region eu-central-1\naws rds create-db-instance-read-replica --db-instance-identifier app-dr --source-db-instance-identifier <primary-arn> --region eu-central-1\naws rds promote-read-replica --db-instance-identifier app-dr --region eu-central-1"},
+      {title:"Lab 14: Mini Data Lake",difficulty:"Medium",desc:"Upload sample JSON logs to S3 in year/month/day partitions. Crawl them with Glue, query with Athena filtered by partition, then convert them to Parquet with a CTAS query and compare the data scanned by the same query on both tables.",solution:"aws s3 cp logs/ s3://lake-raw/logs/year=2026/month=10/day=01/ --recursive\naws glue create-database --database-input Name=lab\naws glue create-crawler --name logs --role <glue-role> --database-name lab --targets S3Targets=[{Path=s3://lake-raw/logs/}]\naws glue start-crawler --name logs\naws athena start-query-execution --query-string \"SELECT status, count(*) FROM lab.logs WHERE year='2026' GROUP BY status\" --result-configuration OutputLocation=s3://athena-out-<acct>/\naws athena start-query-execution --query-string \"CREATE TABLE lab.logs_parquet WITH (format='PARQUET', external_location='s3://lake-curated/logs/') AS SELECT * FROM lab.logs\" --result-configuration OutputLocation=s3://athena-out-<acct>/\naws athena get-query-execution --query-execution-id <id> --query 'QueryExecution.Statistics.DataScannedInBytes'"},
+      {title:"Lab 15: Cost Review",difficulty:"Medium",desc:"Activate a Project cost allocation tag, list last month's cost by service, find unattached EBS volumes and unassociated Elastic IPs, convert a gp2 volume to gp3, get Compute Optimizer and Savings Plans recommendations, and set a monthly budget with a forecast alert.",solution:"aws ce update-cost-allocation-tags-status --cost-allocation-tags-status TagKey=Project,Status=Active\naws ce get-cost-and-usage --time-period Start=2026-09-01,End=2026-10-01 --granularity MONTHLY --metrics UnblendedCost --group-by Type=DIMENSION,Key=SERVICE\naws ec2 describe-volumes --filters Name=status,Values=available --query 'Volumes[].[VolumeId,Size]'\naws ec2 describe-addresses --query 'Addresses[?AssociationId==null].PublicIp'\naws ec2 modify-volume --volume-id <vol> --volume-type gp3\naws compute-optimizer get-ec2-instance-recommendations\naws ce get-savings-plans-purchase-recommendation --savings-plans-type COMPUTE_SP --term-in-years ONE_YEAR --payment-option NO_UPFRONT --lookback-period-in-days THIRTY_DAYS\naws budgets create-budget --account-id <acct> --budget file://budget.json --notifications-with-subscribers file://forecast-alert.json"},
+    ],
+    assessment:{title:"L3 Secure, Hybrid & Cost-Optimised Quiz",questions:[
+      {q:"A company must control key rotation and audit every use of the key that encrypts S3 data. Which option?",options:["SSE-S3","SSE-KMS with a customer managed key","SSE-C","No encryption with TLS only"],answer:1,explain:"Customer managed KMS keys give policy control, rotation and CloudTrail logging of each use."},
+      {q:"An RDS database password must rotate automatically every 30 days. Which service?",options:["Parameter Store standard tier","Secrets Manager","KMS","IAM"],answer:1,explain:"Secrets Manager has built-in rotation for RDS. Parameter Store has no built-in rotation."},
+      {q:"Which service blocks SQL injection attempts against an ALB?",options:["Shield Standard","AWS WAF","GuardDuty","Inspector"],answer:1,explain:"WAF inspects HTTP requests with managed and custom rules, including SQL injection protection."},
+      {q:"Which service discovers personal data stored in S3 buckets?",options:["Macie","GuardDuty","Inspector","Config"],answer:0,explain:"Macie uses machine learning and pattern matching to find sensitive data in S3."},
+      {q:"Private instances upload terabytes to S3 through a NAT Gateway, and NAT costs are high. What is the cheapest fix?",options:["Add a second NAT Gateway","Use an S3 gateway VPC endpoint","Use Direct Connect","Move instances to public subnets"],answer:1,explain:"Gateway endpoints for S3 are free and remove NAT data processing charges for that traffic."},
+      {q:"Forty VPCs across several accounts need full connectivity with each other and on-premises. What is the most scalable design?",options:["Full mesh of VPC peering","Transit Gateway shared with Resource Access Manager","One VPN per VPC","PrivateLink for each VPC"],answer:1,explain:"Transit Gateway is a transitive hub and avoids hundreds of peering connections."},
+      {q:"VPC A peers with B, and B peers with C. Can A reach C through B?",options:["Yes, automatically","No, peering is not transitive","Only with an Internet Gateway","Only in the same Region"],answer:1,explain:"Peering is one-to-one. A needs its own peering connection with C, or use Transit Gateway."},
+      {q:"A SaaS provider wants to expose one service privately to hundreds of customer VPCs, some with overlapping CIDRs. Which feature?",options:["VPC peering","PrivateLink (endpoint service behind an NLB)","Transit Gateway","Site-to-Site VPN"],answer:1,explain:"PrivateLink exposes a single service via interface endpoints without network-level connectivity, so overlapping CIDRs do not matter."},
+      {q:"A company needs an encrypted connection to its data centre within days, at low cost. Which option?",options:["Direct Connect","Site-to-Site VPN","Snowball","Global Accelerator"],answer:1,explain:"VPN is set up in minutes over the internet with IPsec. Direct Connect takes weeks."},
+      {q:"An RTO of 10 minutes and RPO of 1 minute are required, at a cost lower than running two full environments. Which DR strategy fits?",options:["Backup and restore","Warm standby","Multi-site active-active","No DR"],answer:1,explain:"Warm standby keeps a scaled-down running copy with replicated data, meeting minutes-level RTO at moderate cost."},
+      {q:"Backups must be impossible to delete, even by administrators, for 30 days. What do you use?",options:["S3 Standard-IA","AWS Backup Vault Lock","EBS snapshots with tags","CloudTrail"],answer:1,explain:"Vault Lock enforces a WORM retention policy on a backup vault."},
+      {q:"Migrate an Oracle database to Aurora PostgreSQL with minimal downtime. What do you use?",options:["DataSync","DMS with the Schema Conversion Tool, full load plus CDC","Snowball","S3 Replication"],answer:1,explain:"Heterogeneous migrations need schema conversion, and DMS CDC keeps the target in sync until cut-over."},
+      {q:"200 TB must move to S3 over a 100 Mbps link within two weeks. Which option?",options:["DataSync over the internet","Snowball Edge devices","S3 Transfer Acceleration","Site-to-Site VPN"],answer:1,explain:"200 TB at 100 Mbps would take about six months. Offline transfer with Snowball is the practical choice."},
+      {q:"Analysts run occasional ad hoc SQL queries on logs in S3 and want no infrastructure. Which service?",options:["Redshift provisioned cluster","Athena","EMR","RDS"],answer:1,explain:"Athena is serverless and queries S3 directly, charging per data scanned."},
+      {q:"A steady 24/7 workload runs on EC2, Fargate and Lambda across Regions. Which commitment gives savings with the most flexibility?",options:["Standard Reserved Instances","Compute Savings Plans","Spot Instances","Dedicated Hosts"],answer:1,explain:"Compute Savings Plans apply across EC2 families, Regions, Fargate and Lambda."},
+    ]}
+  },
+];
+
+const EXAM_LINKS = [
+  {cat:"Official & Exam",links:[
+    {title:"AWS Certified Solutions Architect – Associate",url:"https://aws.amazon.com/certification/certified-solutions-architect-associate/"},
+    {title:"SAA-C03 Exam Guide",url:"https://docs.aws.amazon.com/aws-certification/latest/examguides/solutions-architect-associate-03.html"},
+    {title:"Official Practice Question Set (Skill Builder)",url:"https://skillbuilder.aws/"},
+    {title:"AWS Certification Exam Prep",url:"https://aws.amazon.com/certification/certification-prep/"},
+  ]},
+  {cat:"Hands-on Practice",links:[
+    {title:"AWS Free Tier",url:"https://aws.amazon.com/free/"},
+    {title:"AWS Workshops",url:"https://workshops.aws/"},
+    {title:"AWS Skill Builder Labs & Cloud Quest",url:"https://skillbuilder.aws/"},
+    {title:"AWS Prescriptive Guidance",url:"https://aws.amazon.com/prescriptive-guidance/"},
+  ]},
+  {cat:"Architecture Reading",links:[
+    {title:"AWS Architecture Center",url:"https://aws.amazon.com/architecture/"},
+    {title:"Well-Architected Framework",url:"https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html"},
+    {title:"AWS Whitepapers & Guides",url:"https://aws.amazon.com/whitepapers/"},
+    {title:"AWS FAQs (great exam revision)",url:"https://aws.amazon.com/faqs/"},
+  ]},
+  {cat:"Reference",links:[
+    {title:"AWS CLI Command Reference",url:"https://awscli.amazonaws.com/v2/documentation/api/latest/reference/index.html"},
+    {title:"AWS Pricing Calculator",url:"https://calculator.aws/"},
+  ]},
+];
+
+// ─── MOCK EXAM: CONFIG ───────────────────────────────────────────────────────
+// Four domains of the SAA-C03 exam guide, with their official weights.
+// The real exam is scored 100-1000 with 720 to pass; 72% is used here as the equivalent.
+const PASS_MARK = 72;
+const DOMAINS = {
+  1:{ name:"Design Secure Architectures", short:"Secure", weight:"30%", color:T.cyan, rgb:"34,211,238", icon:"🛡" },
+  2:{ name:"Design Resilient Architectures", short:"Resilient", weight:"26%", color:T.violet, rgb:"167,139,250", icon:"♻" },
+  3:{ name:"Design High-Performing Architectures", short:"High-Performing", weight:"24%", color:T.amber, rgb:"251,191,36", icon:"⚡" },
+  4:{ name:"Design Cost-Optimized Architectures", short:"Cost-Optimized", weight:"20%", color:T.green, rgb:"52,211,153", icon:"💲" },
+};
+const DOMAIN_IDS = [1, 2, 3, 4];
+const EXAM_MODES = {
+  full:{ label:"Full Mock Exam", icon:"🎯", counts:{1:20,2:17,3:15,4:13}, minutes:130, color:T.green, rgb:"52,211,153",
+    desc:"65 questions in 130 minutes, weighted exactly like SAA-C03, including choose-two questions. The real exam format." },
+  quick:{ label:"Quick Check", icon:"⚡", counts:{1:6,2:5,3:5,4:4}, minutes:40, color:T.pink, rgb:"244,114,182",
+    desc:"20 weighted questions at exam pace (2 minutes each) for a fast snapshot of where you stand." },
+  d1:{ label:"Domain 1 Drill", icon:DOMAINS[1].icon, counts:{1:15}, minutes:30, color:DOMAINS[1].color, rgb:DOMAINS[1].rgb,
+    desc:"15 questions on IAM, encryption, secrets, network security, WAF/Shield and threat detection." },
+  d2:{ label:"Domain 2 Drill", icon:DOMAINS[2].icon, counts:{2:15}, minutes:30, color:DOMAINS[2].color, rgb:DOMAINS[2].rgb,
+    desc:"15 questions on multi-AZ design, Auto Scaling, decoupling, failover and disaster recovery." },
+  d3:{ label:"Domain 3 Drill", icon:DOMAINS[3].icon, counts:{3:15}, minutes:30, color:DOMAINS[3].color, rgb:DOMAINS[3].rgb,
+    desc:"15 questions on compute, storage and database performance, caching, edge networking and data ingestion." },
+  d4:{ label:"Domain 4 Drill", icon:DOMAINS[4].icon, counts:{4:15}, minutes:30, color:DOMAINS[4].color, rgb:DOMAINS[4].rgb,
+    desc:"15 questions on pricing models, storage tiers, data transfer costs and cost management tools." },
+  weak:{ label:"Weak-Area Practice", icon:"🩺", counts:{}, minutes:null, color:T.red, rgb:"248,113,113",
+    desc:"Targeted questions on the lessons you scored below the pass mark on in your last attempt." },
+};
+const HISTORY_KEY = "saa-mock-history";
+
+const shuffle = arr => {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+const band = p => p >= 80
+  ? { label:"Strong", color:T.green, rgb:"52,211,153" }
+  : p >= PASS_MARK
+    ? { label:"Almost there", color:T.amber, rgb:"251,191,36" }
+    : { label:"Weak", color:T.red, rgb:"248,113,113" };
+const readiness = p => p >= 80
+  ? { label:"Exam ready", emoji:"🏆", color:T.green, rgb:"52,211,153",
+      msg:"You are scoring comfortably above the 720/1000 pass line. Confirm it with the free official practice question set on AWS Skill Builder, then book the exam." }
+  : p >= PASS_MARK
+    ? { label:"Almost ready", emoji:"📖", color:T.amber, rgb:"251,191,36",
+        msg:"You are just over the pass line. Fix the weak areas below and retake a full mock to build a safety margin." }
+    : p >= 50
+      ? { label:"Needs focused study", emoji:"🎯", color:T.amber, rgb:"251,191,36",
+          msg:"You know the basics but there are clear gaps. Revisit the lessons and scenarios for your weak areas first, then practise them." }
+      : { label:"Early stage", emoji:"🌱", color:T.red, rgb:"248,113,113",
+          msg:"Plenty of room to grow. Work through the topics, labs and scenarios in order, then come back to the mock exam." };
+
+const hasAnswer = a => Array.isArray(a) && a.length > 0;
+const isRightAnswer = (q, a) => hasAnswer(a) && a.length === q.ans.length && q.ans.every(x => a.includes(x));
+
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    const a = raw ? JSON.parse(raw) : [];
+    return Array.isArray(a) ? a : [];
+  } catch (e) { return []; }
+}
+
+// ─── MOCK EXAM: QUESTION BANK ────────────────────────────────────────────────
+// Q(domain, phaseIndex, topicIndex, question, correctAnswer, [3 wrong answers], explanation)
+// QM(...) is a multiple-response ("choose two") question: [2 correct answers], [3 wrong answers].
+// domain is 1-4 (SAA-C03). phaseIndex/topicIndex point at the lesson to revisit.
+// Options are shuffled every attempt. These are original practice questions, not real exam questions.
+const Q = (d, p, i, q, right, wrong, explain) => ({ d, p, i, q, right:[right], wrong, explain });
+const QM = (d, p, i, q, rights, wrong, explain) => ({ d, p, i, q, right:rights, wrong, explain, multi:true });
+const QUESTION_BANK = [
+  // ── Domain 1: Design Secure Architectures ──
+  Q(1,0,1,"An application running on EC2 instances needs to read objects from an S3 bucket. What is the MOST secure way to grant access?",
+    "Attach an IAM role with a least-privilege policy to the instances through an instance profile",
+    ["Store an IAM user's access keys in the application configuration","Make the bucket public and restrict by IP address","Embed the root user's access keys in user data"],
+    "Roles deliver temporary credentials through the instance metadata service and rotate automatically. Long-term keys on servers can leak."),
+  Q(1,0,1,"Developers in account A must manage resources in account B without separate IAM users in account B. What should you set up?",
+    "An IAM role in account B that trusts account A, which developers assume",
+    ["IAM users in account B with shared passwords","A VPC peering connection between the accounts","An S3 bucket policy in account A"],
+    "Cross-account roles with a trust policy are the standard pattern. Users in A call sts:AssumeRole to get temporary credentials for B."),
+  Q(1,0,1,"A company wants employees to sign in to 30 AWS accounts with their existing corporate directory credentials. What is the recommended solution?",
+    "IAM Identity Center connected to the corporate identity provider, with permission sets per account",
+    ["Create IAM users in every account","Share one IAM user's credentials","Use Cognito user pools for employees"],
+    "IAM Identity Center provides workforce single sign-on across accounts in an organisation. Cognito is for customer-facing application users."),
+  Q(1,0,1,"Security policy requires that no account in the organisation can launch resources outside eu-west-1, even if an administrator tries. What enforces this?",
+    "A service control policy denying actions when aws:RequestedRegion is not eu-west-1",
+    ["An IAM policy on every user","AWS Config rules with notifications","A permission boundary in the management account"],
+    "SCPs set maximum permissions for member accounts, including their administrators and root users. Exclude global services from the deny."),
+  Q(1,0,1,"An IAM policy grants s3:* on a bucket, and the bucket policy explicitly denies s3:DeleteObject for that user. What is the result?",
+    "The user can do everything except delete objects",
+    ["The user can delete objects because the IAM policy allows s3:*","The user is denied all S3 actions","The newest policy takes effect"],
+    "Explicit denies always override allows, wherever they appear."),
+  QM(1,0,1,"Which actions improve the security of the AWS account root user? (Choose two.)",
+    ["Enable MFA on the root user","Delete any access keys that exist for the root user"],
+    ["Create access keys for the root user for automation","Use the root user for daily administration","Share root credentials with the operations team"],
+    "Root should have MFA and no access keys, and be used only for tasks that require it."),
+  QM(1,0,1,"A security audit found long-term IAM user access keys used by an on-premises application and by a Lambda function. Which changes reduce the risk? (Choose two.)",
+    ["Give the Lambda function an execution role instead of access keys","Use IAM Roles Anywhere so the on-premises application obtains temporary credentials"],
+    ["Rotate the keys once a year","Attach AdministratorAccess so the keys never fail","Store the keys in the function's code"],
+    "AWS compute should always use roles. IAM Roles Anywhere lets workloads outside AWS exchange X.509 certificates for temporary role credentials."),
+  Q(1,0,4,"A web tier in a public subnet must reach a database tier in a private subnet on port 5432. Nothing else should reach the database. How should the database security group be configured?",
+    "Allow inbound TCP 5432 from the web tier's security group",
+    ["Allow inbound TCP 5432 from 0.0.0.0/0","Allow all traffic from the VPC CIDR","Add a NACL allow rule and leave the security group open"],
+    "Referencing the source security group allows only members of that group, however many instances there are."),
+  Q(1,0,4,"A company must block a range of malicious IP addresses from reaching instances in a subnet. What should a solutions architect use?",
+    "A network ACL deny rule for the IP range",
+    ["A security group deny rule","An IAM policy with an IP condition","A route table blackhole route for the VPC CIDR"],
+    "Security groups only allow. NACLs support explicit deny rules evaluated in number order. For HTTP traffic, WAF IP sets are another option."),
+  Q(1,0,4,"Instances in private subnets need to download operating system patches from the internet but must not accept inbound connections from it. What should be deployed?",
+    "A NAT Gateway in a public subnet with routes from the private subnets",
+    ["An Internet Gateway route in the private subnets","Elastic IPs on the private instances","A VPC peering connection to a public VPC"],
+    "NAT Gateways allow only outbound-initiated connections. Use one per AZ for resilience."),
+  Q(1,0,3,"A company needs to share a large private file in S3 with an external partner for 24 hours without creating AWS credentials for them. What should it use?",
+    "A presigned URL that expires after 24 hours",
+    ["Make the object public for 24 hours","Create an IAM user for the partner","Enable S3 Transfer Acceleration"],
+    "Presigned URLs grant time-limited access using the signer's permissions."),
+  Q(1,0,3,"Compliance requires that objects in an S3 bucket cannot be deleted or overwritten by anyone, including the root user, for 7 years. What should be used?",
+    "S3 Object Lock in compliance mode with a 7-year retention period",
+    ["S3 versioning only","A bucket policy denying s3:DeleteObject","S3 Glacier Deep Archive"],
+    "Compliance mode prevents deletion or retention changes by any user until the retention date. Governance mode can be bypassed with special permission."),
+  Q(1,0,3,"A bucket must reject any upload that is not encrypted with SSE-KMS and any request not using HTTPS. How should this be enforced?",
+    "A bucket policy that denies PutObject without SSE-KMS and denies requests where aws:SecureTransport is false",
+    ["Enable S3 Transfer Acceleration","Rely on default SSE-S3 encryption","Use an IAM policy on the uploading users only"],
+    "A bucket policy applies to every principal. Default encryption also helps, but explicit deny conditions are what enforce the requirement."),
+  Q(1,2,0,"A company must control the key policy, enable rotation and see every use of the key that encrypts its RDS database in CloudTrail. Which key should be used?",
+    "A KMS customer managed key",
+    ["The AWS managed key aws/rds","An SSE-S3 key","A key stored in Parameter Store"],
+    "Customer managed keys give full control of the key policy, rotation and the ability to disable the key."),
+  Q(1,2,0,"An existing RDS for MySQL instance is unencrypted. The company now requires encryption at rest. What should a solutions architect do?",
+    "Snapshot the instance, copy the snapshot with encryption enabled, and restore a new instance from the encrypted copy",
+    ["Modify the instance and enable encryption","Enable encryption on a read replica","Turn on SSL connections"],
+    "Encryption cannot be enabled on an existing unencrypted RDS instance. The copy-snapshot-with-encryption route is the supported method."),
+  Q(1,2,0,"Database credentials used by a Lambda function must be rotated automatically every 30 days without code changes. Which service should store them?",
+    "AWS Secrets Manager with rotation enabled",
+    ["Systems Manager Parameter Store standard tier","Environment variables in the function","A KMS key alias"],
+    "Secrets Manager provides managed rotation for RDS and Aurora credentials. Parameter Store has no built-in rotation."),
+  Q(1,2,0,"A public web application behind an ALB is receiving SQL injection attempts and bursts of requests from a few IP addresses. Which service addresses both?",
+    "AWS WAF with a managed SQL injection rule group and a rate-based rule",
+    ["Shield Standard","GuardDuty","Network ACLs"],
+    "WAF inspects layer 7 requests and supports rate-based rules. Shield Standard protects against network-layer DDoS."),
+  Q(1,2,0,"A company running a business-critical application wants DDoS protection with access to an AWS response team and protection from scaling charges during attacks. What should it use?",
+    "AWS Shield Advanced",
+    ["AWS Shield Standard","AWS WAF only","Amazon Inspector"],
+    "Shield Advanced adds the Shield Response Team, enhanced detection and cost protection. Shield Standard is automatic and free."),
+  Q(1,2,0,"Which service continuously analyses CloudTrail, VPC Flow Logs and DNS logs to detect compromised instances and unusual API activity?",
+    "Amazon GuardDuty",
+    ["Amazon Macie","AWS Config","Amazon Inspector"],
+    "GuardDuty is a managed threat-detection service. Macie finds sensitive data; Inspector scans for vulnerabilities; Config tracks configuration."),
+  Q(1,2,0,"A company must discover and report on S3 objects that contain credit card numbers and personal data. Which service should it use?",
+    "Amazon Macie",
+    ["Amazon GuardDuty","AWS Security Hub","Amazon Detective"],
+    "Macie uses machine learning and pattern matching to identify sensitive data in S3."),
+  Q(1,2,0,"An auditor needs to know who deleted a security group last week and from which IP address. Where is this recorded?",
+    "AWS CloudTrail event history",
+    ["VPC Flow Logs","CloudWatch metrics","AWS Trusted Advisor"],
+    "CloudTrail records API calls with the identity, time and source IP. Flow Logs record network traffic, not API calls."),
+  Q(1,2,0,"A company wants to detect S3 buckets that become public and automatically remediate them. Which service should it use?",
+    "AWS Config with a managed rule and automatic remediation",
+    ["CloudTrail Lake only","Amazon Inspector","AWS Budgets"],
+    "Config evaluates resource configuration against rules continuously and can trigger Systems Manager automation to fix non-compliant resources."),
+  Q(1,1,2,"Customers upload private documents to a mobile app. Each user must access only their own S3 prefix, without the app embedding AWS keys. What should a solutions architect use?",
+    "Cognito user pools for sign-in and identity pools for scoped temporary credentials",
+    ["One IAM user shared by all app installs","A public bucket with obscure object names","IAM Identity Center"],
+    "Identity pools exchange user-pool tokens for temporary credentials whose policy can use the user's identity ID in the S3 prefix."),
+  Q(1,1,2,"Content in a private S3 bucket must be served only through CloudFront. Users must not be able to bypass CloudFront using S3 URLs. What should be configured?",
+    "Origin access control on the distribution and a bucket policy that allows only that distribution",
+    ["Make the bucket public-read","S3 static website hosting","A presigned URL for every object"],
+    "OAC signs CloudFront's requests to S3, and the bucket policy allows only the distribution, so direct S3 access is denied."),
+  Q(1,2,1,"EC2 instances in private subnets must call the Secrets Manager API without traffic leaving the AWS network and without a NAT Gateway. What should be added?",
+    "An interface VPC endpoint for Secrets Manager with private DNS enabled",
+    ["A gateway endpoint for Secrets Manager","An Internet Gateway","A VPC peering connection"],
+    "Gateway endpoints exist only for S3 and DynamoDB. Other services use interface endpoints powered by PrivateLink."),
+  Q(1,2,1,"A bucket must accept requests only from applications inside a specific VPC. Which bucket policy condition achieves this?",
+    "Deny requests where aws:SourceVpce does not equal the VPC's S3 gateway endpoint ID",
+    ["Allow requests where aws:SourceIp is the VPC CIDR","Deny requests where aws:SecureTransport is true","Allow only the s3:ListBucket action"],
+    "Traffic through a gateway endpoint uses private addresses, so aws:SourceIp does not work. aws:SourceVpce or aws:SourceVpc does."),
+  Q(1,2,1,"A company needs an encrypted connection between its data centre and AWS that uses its existing 10 Gbps Direct Connect link. What should be configured?",
+    "A Site-to-Site VPN over the Direct Connect connection, or MACsec where supported",
+    ["Direct Connect alone, because it is encrypted by default","S3 Transfer Acceleration","A VPC peering connection"],
+    "Direct Connect is private but not encrypted by default. IPsec VPN over a public VIF/transit VIF, or MACsec on dedicated connections, adds encryption."),
+  QM(1,2,0,"A company stores sensitive data in S3 and must meet these requirements: encryption keys are auditable, and data is protected if someone gets read access to the bucket through a misconfigured policy. Which steps help? (Choose two.)",
+    ["Use SSE-KMS with a customer managed key whose key policy allows decryption only by specific roles","Enable S3 Block Public Access at the account level"],
+    ["Use SSE-S3 only","Enable S3 Transfer Acceleration","Store data in One Zone-IA"],
+    "With SSE-KMS a principal needs both S3 and KMS decrypt permissions, adding a second control. Block Public Access stops public policies and ACLs."),
+  QM(1,0,4,"Which statements about security groups and network ACLs are correct? (Choose two.)",
+    ["Security groups are stateful, so return traffic is automatically allowed","Network ACLs are stateless and evaluate rules in number order"],
+    ["Security groups support explicit deny rules","Network ACLs are attached to individual instances","Security groups are evaluated in number order"],
+    "SGs are stateful allow-lists on ENIs. NACLs are stateless, ordered and attached to subnets."),
+  Q(1,1,4,"A containerised application on ECS Fargate must write to a DynamoDB table. How should permissions be granted?",
+    "An IAM task role on the task definition",
+    ["The EC2 instance profile of the cluster","Access keys in environment variables","The task execution role only"],
+    "The task role gives the application its permissions. The execution role is for ECS itself, for example to pull images and write logs."),
+  Q(1,1,4,"An API built on API Gateway must accept requests only from users authenticated by the company's Cognito user pool. What should be configured?",
+    "A Cognito user pool authoriser (or JWT authoriser) on the API routes",
+    ["An IAM user per customer","A resource policy allowing all principals","WAF geo-matching"],
+    "API Gateway validates the user pool token before invoking the backend."),
+  Q(1,2,0,"A company needs FIPS 140-3 Level 3 validated, single-tenant hardware to generate and store keys that it fully controls. What should it use?",
+    "AWS CloudHSM",
+    ["KMS AWS managed keys","Secrets Manager","Parameter Store SecureString"],
+    "CloudHSM provides dedicated HSMs that you manage. KMS can also use CloudHSM as a custom key store."),
+  Q(1,2,0,"A team must apply the same WAF rules and Shield Advanced protection to ALBs and CloudFront distributions across 50 accounts. What simplifies this?",
+    "AWS Firewall Manager with an organisation-wide policy",
+    ["Configure WAF manually in each account","AWS Config aggregator","AWS Control Tower drift detection"],
+    "Firewall Manager centrally applies WAF, Shield, security group and Network Firewall policies across Organizations accounts."),
+  Q(1,2,4,"A company wants to centrally prevent member accounts from disabling CloudTrail. What should it use?",
+    "A service control policy that denies cloudtrail:StopLogging and cloudtrail:DeleteTrail",
+    ["An IAM policy in the management account","AWS Budgets actions","A CloudWatch alarm"],
+    "SCPs restrict all principals in member accounts. Combine with an organisation trail that writes to a separate log archive account."),
+  Q(1,0,2,"Administrators need shell access to private EC2 instances with no inbound ports open, no SSH keys and full session logging. What should be used?",
+    "Systems Manager Session Manager",
+    ["A bastion host with SSH open to 0.0.0.0/0","EC2 serial console for every session","A Site-to-Site VPN with password login"],
+    "Session Manager uses the SSM agent's outbound connection and logs sessions to CloudWatch Logs or S3."),
+  Q(1,0,4,"A company needs to capture metadata about rejected network connections in its VPC for security analysis. What should it enable?",
+    "VPC Flow Logs with traffic type REJECT",
+    ["CloudTrail data events","AWS Config","S3 server access logs"],
+    "Flow Logs record IP traffic metadata for VPCs, subnets or ENIs and can be sent to CloudWatch Logs or S3."),
+  Q(1,1,1,"An RDS database must not be reachable from the internet. Which setting is required in addition to private subnets?",
+    "Set the database to not publicly accessible and allow access only from application security groups",
+    ["Enable Multi-AZ","Enable Performance Insights","Increase backup retention"],
+    "Public accessibility controls whether the endpoint resolves to a public IP. Security groups then limit which clients can connect."),
+  Q(1,2,0,"A company must scan container images in ECR and Lambda functions for software vulnerabilities continuously. Which service?",
+    "Amazon Inspector",
+    ["Amazon Macie","AWS Shield","AWS Artifact"],
+    "Inspector scans EC2, ECR images and Lambda for known vulnerabilities and network exposure."),
+  Q(1,0,3,"An application on EC2 writes logs to an S3 bucket in another account. The bucket owner must have full control of the objects. What is the simplest current approach?",
+    "Set Object Ownership to bucket owner enforced on the destination bucket and allow the writer in the bucket policy",
+    ["Use ACLs to grant the bucket owner READ","Copy objects with the root user","Enable requester pays"],
+    "Bucket owner enforced disables ACLs, so the bucket owner automatically owns every object written to the bucket."),
+  QM(1,2,1,"Private instances must access S3 and DynamoDB with no internet path and at the lowest cost. Which should be created? (Choose two.)",
+    ["A gateway VPC endpoint for S3","A gateway VPC endpoint for DynamoDB"],
+    ["An interface endpoint for EC2","A NAT Gateway in each AZ","An Internet Gateway"],
+    "Gateway endpoints for S3 and DynamoDB are free and work through route tables."),
+  Q(1,0,1,"A developer needs permission to create IAM roles for applications, but must not be able to grant more permissions than a defined set. What should be used?",
+    "A permissions boundary required on roles the developer creates",
+    ["A service control policy on the management account","An S3 bucket policy","AWS Shield"],
+    "Permissions boundaries cap the maximum permissions of identities, which makes safe delegation of IAM role creation possible."),
+  Q(1,1,2,"Paid video content on CloudFront must be accessible only to subscribers, for many files at once. What should be used?",
+    "CloudFront signed cookies",
+    ["S3 presigned URLs to the origin","Public S3 objects","Route 53 geolocation routing"],
+    "Signed cookies authorise access to multiple files; signed URLs suit individual files."),
+  Q(1,0,3,"A company needs to encrypt EBS volumes for every new EC2 instance in a Region automatically. What is the simplest approach?",
+    "Enable EBS encryption by default for the Region",
+    ["Encrypt each volume after launch","Use instance store","Create an SCP denying unencrypted volumes only"],
+    "Encryption by default encrypts all new volumes and snapshot copies with the chosen KMS key."),
+  Q(1,1,3,"Messages in an SQS queue contain sensitive data and must be encrypted at rest with a key the company manages. What should be configured?",
+    "Server-side encryption on the queue with a KMS customer managed key",
+    ["A dead-letter queue","Long polling","FIFO ordering"],
+    "SQS supports SSE with SQS-managed keys or KMS keys. Producers and consumers need permission to use the KMS key."),
+
+  // ── Domain 2: Design Resilient Architectures ──
+  Q(2,1,0,"A web application runs on a single EC2 instance. It must survive the failure of an Availability Zone. What should a solutions architect do?",
+    "Run instances in an Auto Scaling group across two or more AZs behind an Application Load Balancer",
+    ["Use a larger instance type","Take hourly EBS snapshots","Attach an Elastic IP"],
+    "Spreading capacity across AZs behind a load balancer removes the single point of failure."),
+  Q(2,1,0,"Instances in an Auto Scaling group keep running even though the application on them returns errors to the load balancer. How can unhealthy instances be replaced automatically?",
+    "Change the Auto Scaling group health check type to ELB",
+    ["Increase the group's maximum size","Enable detailed monitoring","Use a scheduled scaling action"],
+    "By default the group uses EC2 status checks only. ELB health checks also replace instances failing the application check."),
+  Q(2,1,0,"An application needs a few minutes to warm up after launch. New instances get traffic too early and fail health checks. What helps?",
+    "Configure a health check grace period (and instance warm-up) on the Auto Scaling group",
+    ["Disable health checks","Use a Network Load Balancer","Switch to Spot Instances"],
+    "The grace period stops the group marking new instances unhealthy before they finish initialising. Warm pools can also pre-initialise instances."),
+  Q(2,1,3,"An order-processing system loses orders when the backend is overloaded during sales. What design change makes it resilient?",
+    "Place an SQS queue between the front end and the backend workers",
+    ["Increase the instance size of the front end","Use a Network Load Balancer","Add more Route 53 records"],
+    "The queue buffers orders durably until workers are ready, decoupling the tiers. Workers can scale on queue depth."),
+  Q(2,1,3,"A message in an SQS queue repeatedly fails processing and is retried forever, delaying other work. What should be configured?",
+    "A dead-letter queue with a maxReceiveCount on the source queue",
+    ["A longer retention period","FIFO ordering","Short polling"],
+    "After the maximum receives, SQS moves the message to the DLQ for later inspection."),
+  Q(2,1,3,"Each new customer sign-up must trigger three independent processes (welcome email, CRM update, analytics), and one failing must not affect the others. What is the best design?",
+    "Publish to an SNS topic with an SQS queue per process subscribed (fan-out)",
+    ["A single SQS queue read by all three processes","Call the three services synchronously","Store sign-ups in S3 and poll every hour"],
+    "Fan-out delivers a copy to each queue; each consumer processes and retries independently."),
+  Q(2,1,3,"Financial transactions must be processed exactly once and in the order they were sent for each account. Which service configuration?",
+    "SQS FIFO queue using the account ID as the message group ID",
+    ["SQS standard queue","SNS standard topic with email subscriptions","Kinesis Data Firehose"],
+    "FIFO queues preserve order within a message group and deduplicate messages, giving exactly-once processing."),
+  Q(2,1,1,"A production PostgreSQL database on RDS must fail over automatically within minutes if its AZ fails, with no data loss. What should be enabled?",
+    "RDS Multi-AZ deployment",
+    ["A read replica in the same AZ","Automated backups only","A larger instance class"],
+    "Multi-AZ uses synchronous replication to a standby in another AZ and fails over automatically."),
+  Q(2,1,1,"A company needs a relational database that can recover in another Region within a minute with an RPO of about one second. Which option meets this?",
+    "Aurora Global Database",
+    ["RDS Multi-AZ","Daily snapshots copied to another Region","DynamoDB on-demand backups"],
+    "Aurora Global Database replicates with typically sub-second lag and allows a secondary Region to be promoted quickly."),
+  Q(2,1,1,"A DynamoDB-based application must keep serving reads and writes in two Regions if one Region becomes unavailable. What should be used?",
+    "DynamoDB global tables",
+    ["DynamoDB Streams to a Lambda function","DAX in each Region","Point-in-time recovery"],
+    "Global tables replicate data across Regions with multi-active writes."),
+  Q(2,1,1,"A developer accidentally deleted items from a DynamoDB table 2 hours ago. How can the data be recovered with minimal loss?",
+    "Restore the table using point-in-time recovery to a moment before the deletion",
+    ["Use DynamoDB Streams to replay all writes from the start","Recreate the table from CloudTrail logs","Use DAX to retrieve cached items"],
+    "PITR restores to any second within the last 35 days into a new table."),
+  Q(2,1,2,"A company runs its application in two Regions. Users must be sent to the primary Region, and automatically to the secondary if the primary becomes unhealthy. Which Route 53 configuration?",
+    "Failover routing with a health check on the primary record",
+    ["Simple routing with two IP addresses","Geolocation routing","Weighted routing 50/50 without health checks"],
+    "Failover routing returns the secondary record only when the primary's health check fails."),
+  Q(2,1,2,"A global TCP application needs fast Regional failover that does not depend on DNS caching, and two fixed IP addresses for clients. What should be used?",
+    "AWS Global Accelerator with endpoint groups in each Region",
+    ["Route 53 failover routing","CloudFront with origin failover","An NLB in one Region"],
+    "Global Accelerator's anycast IPs stay the same while traffic shifts between healthy endpoints in seconds."),
+  Q(2,2,2,"A company requires an RPO of 24 hours and an RTO of 24 hours for a non-critical system and wants the lowest cost. Which DR strategy?",
+    "Backup and restore",
+    ["Pilot light","Warm standby","Multi-site active-active"],
+    "Long RPO and RTO allow the cheapest strategy: back up data and rebuild after a disaster."),
+  Q(2,2,2,"A critical system requires an RTO of minutes. The company accepts running a reduced-size copy of production at all times in the DR Region. Which strategy?",
+    "Warm standby",
+    ["Backup and restore","Pilot light with compute at zero","Cold storage in Glacier"],
+    "Warm standby runs a scaled-down working environment that scales up on failover."),
+  Q(2,2,2,"Which strategy keeps databases replicated to a DR Region with application servers defined but not running, scaling them only during a disaster?",
+    "Pilot light",
+    ["Warm standby","Multi-site active-active","Backup and restore"],
+    "Pilot light keeps the core (data) live and the rest ready to launch."),
+  Q(2,2,2,"A company must back up EC2, RDS, DynamoDB and EFS centrally with the same schedule, retention and cross-Region copies. What should it use?",
+    "AWS Backup with a backup plan and cross-Region copy rules",
+    ["Separate cron scripts on an EC2 instance","CloudFormation StackSets","S3 Replication only"],
+    "AWS Backup manages policies for many services from one place and supports cross-Region and cross-account copies."),
+  Q(2,0,3,"EBS-backed data must be recoverable in another Region if the primary Region fails. What should be done?",
+    "Copy EBS snapshots to the second Region on a schedule",
+    ["Rely on EBS replication within the AZ","Use instance store volumes","Enable Multi-Attach"],
+    "EBS volumes and snapshots are Regional. Copying snapshots (manually, with Data Lifecycle Manager or AWS Backup) provides cross-Region recovery."),
+  Q(2,0,3,"Objects uploaded to a bucket in eu-west-1 must automatically be copied to a bucket in eu-central-1 for disaster recovery. What is required?",
+    "Versioning on both buckets and a Cross-Region Replication rule",
+    ["S3 Transfer Acceleration","Lifecycle rules to Glacier","A gateway endpoint in both Regions"],
+    "Replication requires versioning on source and destination and an IAM role for S3 to replicate."),
+  Q(2,0,3,"Which statement about S3 durability and availability is correct for the Standard storage class?",
+    "Data is stored redundantly across at least three AZs for eleven nines of durability",
+    ["Data is stored in one AZ only","S3 Standard objects must be backed up to EBS","Durability depends on the instance type"],
+    "S3 Standard stores data across multiple AZs. One Zone-IA is the exception, using a single AZ."),
+  Q(2,0,4,"Private instances in two AZs share one NAT Gateway in AZ-a. What is the resilience risk and fix?",
+    "If AZ-a fails, instances in AZ-b lose internet access; deploy a NAT Gateway in each AZ with per-AZ routes",
+    ["NAT Gateways cannot fail; no change needed","Add a second Internet Gateway","Use a larger NAT Gateway size"],
+    "NAT Gateways are zonal. One per AZ removes the cross-AZ dependency (and cross-AZ data charges)."),
+  Q(2,1,4,"A serverless API sometimes fails when its Lambda function cannot connect to RDS during traffic spikes because of too many connections. What improves resilience?",
+    "Use RDS Proxy between Lambda and the database",
+    ["Increase Lambda timeout to 15 minutes","Use a Network Load Balancer","Enable S3 versioning"],
+    "RDS Proxy pools connections and also reduces failover time."),
+  Q(2,1,4,"A batch process consists of several steps with retries, branching on errors and a manual approval step. Which service makes this reliable with the least custom code?",
+    "AWS Step Functions",
+    ["A single long-running Lambda function","Cron on an EC2 instance","SNS with email subscriptions"],
+    "Step Functions manages state, retries, error handling and wait-for-callback approval steps."),
+  Q(2,1,3,"Several AWS services and a SaaS application must trigger different workflows based on event content, with minimal code. Which service fits best?",
+    "Amazon EventBridge with rules and targets",
+    ["SQS standard queue","Kinesis Data Streams","AWS Batch"],
+    "EventBridge routes events by pattern from AWS services, SaaS partners and custom apps to many targets."),
+  QM(2,1,0,"A company wants its web tier to tolerate an AZ failure with no manual action. Which actions are required? (Choose two.)",
+    ["Configure the Auto Scaling group to use subnets in at least two AZs","Place an Application Load Balancer across the same AZs"],
+    ["Use a cluster placement group","Run all instances in the largest AZ","Assign Elastic IPs to every instance"],
+    "Multi-AZ Auto Scaling replaces capacity in healthy AZs, and the ALB routes only to healthy targets."),
+  QM(2,1,1,"Which statements about RDS read replicas are correct? (Choose two.)",
+    ["They use asynchronous replication","They can be promoted to a standalone database"],
+    ["They provide automatic failover like Multi-AZ","They must be in the same AZ as the primary","They cannot be created in another Region"],
+    "Read replicas scale reads, can be cross-Region and can be promoted, but failover is not automatic."),
+  QM(2,2,2,"A company needs to restore service in another Region within 30 minutes and lose no more than 5 minutes of data, at minimal cost. Which components fit a pilot light design? (Choose two.)",
+    ["A cross-Region read replica of the database","AMIs copied to the DR Region with an Auto Scaling group at zero capacity"],
+    ["Full production capacity running in both Regions","Weekly backups to Glacier Deep Archive","A single instance store volume"],
+    "Continuously replicated data meets the RPO; pre-built but idle compute meets the RTO cheaply."),
+  Q(2,0,3,"A Linux application on several instances across AZs needs shared file storage that remains available if an AZ fails. What should be used?",
+    "Amazon EFS with mount targets in each AZ",
+    ["An EBS volume with Multi-Attach","Instance store","S3 One Zone-IA mounted as a file system"],
+    "EFS Regional file systems store data across AZs and can be mounted from all of them."),
+  Q(2,1,1,"An application on Aurora MySQL needs to scale reads and fail over quickly if the writer fails. What should be configured?",
+    "Aurora Replicas in other AZs, with applications using the reader endpoint",
+    ["RDS Proxy only","A single larger writer","Daily cluster snapshots"],
+    "Aurora Replicas serve reads through the reader endpoint and are promoted automatically on writer failure."),
+  Q(2,1,3,"Producers send messages faster than a legacy system can process them, and occasional duplicates are acceptable. Which is the simplest buffer?",
+    "SQS standard queue",
+    ["SQS FIFO queue","SNS topic","EventBridge archive"],
+    "Standard queues offer nearly unlimited throughput with at-least-once delivery."),
+  Q(2,1,0,"An application must stay available during a rolling update of the Auto Scaling group's AMI. What should be used?",
+    "Instance refresh with a minimum healthy percentage",
+    ["Terminate all instances and relaunch","Change the launch template and reboot instances","Detach the load balancer during updates"],
+    "Instance refresh replaces instances in batches while keeping a set percentage healthy."),
+  Q(2,2,2,"A company is migrating a production database to AWS and cannot afford more than a few minutes of downtime. Which approach?",
+    "AWS DMS with a full load followed by ongoing change data capture until cut-over",
+    ["Export a dump file and import it during a weekend outage","Use Snowball for the database","Copy files with DataSync"],
+    "CDC keeps the target in sync with the source so the cut-over window is short."),
+  Q(2,1,2,"A static website must stay available if the primary S3 origin becomes unavailable. What should be configured in CloudFront?",
+    "An origin group with a primary and a secondary origin for failover",
+    ["Geo-restriction","A longer default TTL only","Signed URLs"],
+    "Origin failover retries requests on the secondary origin when the primary returns specified error codes."),
+  Q(2,1,4,"A containerised web service must run across AZs with automatic restarts and no servers to manage. Which option?",
+    "An ECS service on Fargate with tasks spread across subnets in multiple AZs behind an ALB",
+    ["Docker on a single EC2 instance","Lambda with a 30-minute timeout","EKS with one node in one AZ"],
+    "ECS services maintain the desired task count and replace failed tasks; Fargate removes server management."),
+  Q(2,2,2,"Ransomware could encrypt or delete backups using compromised administrator credentials. What protects the backups?",
+    "AWS Backup Vault Lock in compliance mode, with copies in a separate account",
+    ["Tagging backups as critical","Enabling CloudWatch alarms","Storing backups in the same account and Region"],
+    "Vault Lock makes recovery points immutable for the retention period; a separate account limits blast radius."),
+  Q(2,1,3,"A real-time clickstream must be ingested once and read independently by three consumer applications that need to replay the last 3 days of data. Which service?",
+    "Kinesis Data Streams with an extended retention period",
+    ["SQS standard queue","SNS topic","Amazon Data Firehose to S3 only"],
+    "Kinesis stores records for replay and supports multiple independent consumers. SQS deletes messages once consumed."),
+  Q(2,0,0,"Which Well-Architected design principle best describes using multiple AZs and Auto Scaling instead of a single large server?",
+    "Scale horizontally to increase aggregate workload availability",
+    ["Go global in minutes","Use mechanical sympathy","Analyse and attribute expenditure"],
+    "The Reliability pillar recommends horizontal scaling to remove single points of failure."),
+  Q(2,1,1,"A legacy app needs a MySQL database whose standby replicas can also serve read traffic, with failover typically under 35 seconds. Which deployment?",
+    "RDS Multi-AZ DB cluster",
+    ["RDS Single-AZ with a read replica","RDS Multi-AZ DB instance","DynamoDB global table"],
+    "Multi-AZ DB clusters have two readable standbys in different AZs and faster failover than Multi-AZ DB instances."),
+  Q(2,0,4,"An on-premises network connects to AWS with a single Direct Connect connection. The business requires connectivity to survive a Direct Connect failure at low cost. What should be added?",
+    "A Site-to-Site VPN as a backup connection",
+    ["A second VPC","S3 Transfer Acceleration","A larger Direct Connect port"],
+    "VPN over the internet is a cost-effective failover path for Direct Connect. Critical workloads use two Direct Connect locations."),
+
+  // ── Domain 3: Design High-Performing Architectures ──
+  Q(3,1,0,"A microservices application must route requests by URL path to different services running in containers. Which load balancer?",
+    "Application Load Balancer",
+    ["Network Load Balancer","Gateway Load Balancer","Classic Load Balancer"],
+    "ALBs route on path, host, headers and query strings and support IP and container targets."),
+  Q(3,1,0,"A multiplayer game uses UDP and needs millions of packets per second with ultra-low latency. Which load balancer?",
+    "Network Load Balancer",
+    ["Application Load Balancer","Gateway Load Balancer","CloudFront"],
+    "NLB operates at layer 4, supports UDP and is optimised for extreme performance."),
+  Q(3,1,0,"Traffic to an application grows steadily during the day and the team wants to keep average CPU utilisation around 60%. Which scaling policy is simplest?",
+    "Target tracking scaling on average CPU utilisation",
+    ["Scheduled scaling every hour","Manual scaling","Step scaling on memory without metrics"],
+    "Target tracking adjusts capacity automatically to hold the metric near the target."),
+  Q(3,0,2,"A tightly coupled HPC application needs the lowest network latency and highest throughput between instances. What should be used?",
+    "A cluster placement group with instances that support enhanced networking (and EFA where needed)",
+    ["A spread placement group across AZs","Instances in different Regions","A partition placement group across AZs"],
+    "Cluster placement groups keep instances physically close in one AZ. EFA adds low-latency networking for MPI workloads."),
+  Q(3,0,2,"An in-memory analytics application needs very large amounts of RAM per instance. Which instance family fits?",
+    "Memory optimised (R or X family)",
+    ["Compute optimised (C family)","Burstable (T family)","Storage optimised (I family)"],
+    "R and X instances provide high memory-to-vCPU ratios for in-memory databases and analytics."),
+  Q(3,0,3,"A database on EC2 needs 40,000 consistent IOPS with sub-millisecond latency on a single volume. Which EBS type?",
+    "io2 Block Express (Provisioned IOPS SSD)",
+    ["gp2","st1","sc1"],
+    "io2 volumes provide very high, consistent provisioned IOPS for critical databases."),
+  Q(3,0,3,"A general-purpose application volume needs 6,000 IOPS but only 200 GB of storage. What is the most cost-effective EBS choice?",
+    "gp3 with 6,000 provisioned IOPS",
+    ["gp2 sized to 2,000 GB to get the IOPS","io2 with 6,000 IOPS","st1 at 500 GB"],
+    "gp3 lets you provision IOPS and throughput independently of size, avoiding over-buying storage."),
+  Q(3,0,3,"A log processing job reads large files sequentially and needs high throughput at low cost. Which EBS volume type?",
+    "Throughput Optimised HDD (st1)",
+    ["io2","gp3 with maximum IOPS","Cold HDD (sc1) as the boot volume"],
+    "st1 is designed for big, sequential throughput workloads. HDD volumes cannot be boot volumes."),
+  Q(3,0,3,"A temporary scratch space needs the highest possible I/O performance, and data loss on instance stop is acceptable. What should be used?",
+    "EC2 instance store volumes",
+    ["EBS gp3","Amazon EFS","S3 Standard"],
+    "Instance store disks are physically attached and very fast but ephemeral."),
+  Q(3,0,3,"A Windows-based application needs a shared file system with SMB and Active Directory integration. Which service?",
+    "Amazon FSx for Windows File Server",
+    ["Amazon EFS","FSx for Lustre","S3 with Transfer Acceleration"],
+    "FSx for Windows provides fully managed SMB shares integrated with AD. EFS is NFS for Linux."),
+  Q(3,0,3,"A machine learning training job needs a high-performance parallel file system that reads training data from S3. Which service?",
+    "Amazon FSx for Lustre linked to the S3 bucket",
+    ["Amazon EFS","FSx for Windows File Server","EBS Multi-Attach"],
+    "FSx for Lustre provides sub-millisecond, high-throughput file access and integrates with S3."),
+  Q(3,0,3,"Users around the world upload large files to an S3 bucket in one Region and complain of slow uploads. What improves upload speed with minimal changes?",
+    "Enable S3 Transfer Acceleration and use multipart uploads",
+    ["Use S3 One Zone-IA","Create a Glacier vault","Add a gateway VPC endpoint"],
+    "Transfer Acceleration routes uploads through the nearest edge location over the AWS backbone; multipart uploads parallelise large files."),
+  Q(3,1,2,"A website serves static images and videos to users worldwide with high latency. What reduces latency the most?",
+    "Serve the content through Amazon CloudFront",
+    ["Move the bucket to a larger Region","Use Route 53 weighted routing","Enable S3 versioning"],
+    "CloudFront caches content at edge locations close to users."),
+  Q(3,1,2,"A company runs its application in three Regions and wants each user routed to the Region that gives the lowest network latency. Which Route 53 policy?",
+    "Latency-based routing",
+    ["Geolocation routing","Simple routing","Failover routing"],
+    "Latency routing uses AWS latency measurements between user networks and Regions."),
+  Q(3,1,1,"Read-heavy traffic on an RDS database repeatedly runs the same expensive queries, causing high CPU. What improves performance most cost-effectively?",
+    "Add an ElastiCache cluster to cache query results",
+    ["Enable Multi-AZ","Increase backup retention","Convert to Provisioned IOPS storage only"],
+    "Caching repeated query results removes load from the database and lowers latency."),
+  Q(3,1,1,"A gaming leaderboard needs sorted rankings updated in real time for millions of players. Which service is best suited?",
+    "ElastiCache for Redis (or Valkey) using sorted sets",
+    ["Amazon Redshift","S3 Select","ElastiCache for Memcached"],
+    "Redis sorted sets maintain rankings efficiently in memory. Memcached has no sorted data structures."),
+  Q(3,1,1,"An application needs a database that delivers consistent single-digit millisecond latency at any scale for key-value lookups with unpredictable traffic. Which option?",
+    "DynamoDB with on-demand capacity",
+    ["RDS for MySQL on a large instance","Redshift","Aurora with a single writer"],
+    "DynamoDB scales horizontally with predictable low latency; on-demand mode absorbs unpredictable traffic."),
+  Q(3,1,1,"A DynamoDB table experiences throttling on one partition key that receives most writes. What design change helps?",
+    "Choose a higher-cardinality partition key or add a random suffix to spread writes",
+    ["Enable DAX","Enable point-in-time recovery","Switch to a FIFO queue"],
+    "Hot partitions occur when traffic concentrates on few keys. Distributing keys spreads load across partitions."),
+  Q(3,1,1,"A DynamoDB table serves a read-heavy workload with the same items requested repeatedly and needs microsecond read latency. What should be added?",
+    "DynamoDB Accelerator (DAX)",
+    ["A global secondary index","DynamoDB Streams","S3 Transfer Acceleration"],
+    "DAX is a write-through in-memory cache for DynamoDB."),
+  Q(3,1,4,"An image thumbnail must be generated every time a file is uploaded to S3, with no servers to manage. What is the best design?",
+    "An S3 event notification that invokes a Lambda function",
+    ["A cron job on EC2 that lists the bucket every minute","A Kinesis stream polled by EC2","An RDS trigger"],
+    "S3 events invoking Lambda is the canonical serverless, event-driven pattern."),
+  Q(3,1,4,"A Lambda-backed API has unacceptable latency on the first requests after idle periods. What reduces this?",
+    "Configure provisioned concurrency for the function",
+    ["Increase the timeout","Use reserved concurrency of zero","Move the function out of the VPC only"],
+    "Provisioned concurrency keeps execution environments initialised, eliminating cold starts."),
+  Q(3,1,4,"A video transcoding job runs for about 2 hours per file. Which compute option is NOT suitable?",
+    "AWS Lambda",
+    ["ECS on Fargate","AWS Batch","EC2 Spot Instances in an Auto Scaling group"],
+    "Lambda has a 15-minute maximum execution time."),
+  Q(3,1,4,"A REST API on API Gateway returns the same product catalogue responses for most requests. What reduces backend load and latency?",
+    "Enable API Gateway caching for the stage",
+    ["Enable CloudTrail data events","Use a larger Lambda timeout","Add a dead-letter queue"],
+    "API Gateway caching returns responses without invoking the backend for the cache TTL."),
+  Q(3,1,3,"Application logs must be delivered continuously to S3 in compressed batches with no custom consumer code. Which service?",
+    "Amazon Data Firehose",
+    ["Kinesis Data Streams with an EC2 consumer","SQS standard queue","Step Functions"],
+    "Firehose buffers, optionally transforms and compresses, and delivers streaming data to S3 and other destinations."),
+  Q(3,2,3,"Analysts need to run ad hoc SQL queries on terabytes of log data stored in S3 without loading it into a database. Which service?",
+    "Amazon Athena",
+    ["Amazon RDS","Amazon ElastiCache","Amazon Neptune"],
+    "Athena queries data in place in S3 using standard SQL."),
+  Q(3,2,3,"Athena queries on a large S3 dataset are slow and scan the entire dataset each time. Which changes improve performance?",
+    "Partition the data by date and convert it to a compressed columnar format such as Parquet",
+    ["Move the data to Glacier Deep Archive","Enable S3 versioning","Store each record as a separate small JSON file"],
+    "Partitions let Athena skip irrelevant data, and columnar formats read only needed columns, cutting data scanned."),
+  Q(3,2,3,"A company needs a data warehouse for complex BI queries joining billions of rows, run many times a day by analysts. Which service?",
+    "Amazon Redshift",
+    ["Amazon DynamoDB","Amazon Athena with JSON files","Amazon ElastiCache"],
+    "Redshift's columnar MPP architecture suits frequent complex analytical queries over large structured datasets."),
+  Q(3,2,3,"A company must transform data from several sources and maintain a central catalogue of table schemas used by Athena and Redshift Spectrum. Which service?",
+    "AWS Glue (crawlers, Data Catalog and ETL jobs)",
+    ["Amazon QuickSight","AWS DataSync","Amazon SNS"],
+    "Glue crawlers populate the Data Catalog, which is shared by Athena, Redshift Spectrum and EMR."),
+  Q(3,2,3,"An application needs full-text search with relevance ranking across product descriptions. Which service?",
+    "Amazon OpenSearch Service",
+    ["Amazon Redshift","Amazon RDS for PostgreSQL with no indexes","Amazon S3 Select"],
+    "OpenSearch is built for full-text search and log analytics."),
+  QM(3,0,3,"A company stores large media files and needs faster downloads for global users and faster uploads from remote offices. Which features help? (Choose two.)",
+    ["Amazon CloudFront for downloads","S3 Transfer Acceleration for uploads"],
+    ["S3 Glacier Flexible Retrieval","S3 Object Lock","EBS Multi-Attach"],
+    "CloudFront caches downloads at the edge; Transfer Acceleration speeds uploads over long distances."),
+  QM(3,1,1,"A read-heavy relational workload on Aurora has high CPU from repeated SELECT queries. Which actions improve read performance? (Choose two.)",
+    ["Add Aurora Replicas and send reads to the reader endpoint","Cache frequent query results in ElastiCache"],
+    ["Enable Multi-AZ on the writer only","Increase backup retention","Disable the reader endpoint"],
+    "Replicas spread read load; caching removes repeated queries entirely."),
+  QM(3,1,4,"A team wants to run containers without managing servers or cluster capacity. Which options meet this? (Choose two.)",
+    ["Amazon ECS with AWS Fargate","Amazon EKS with Fargate profiles"],
+    ["Amazon ECS on self-managed EC2 instances","Docker on a standalone EC2 instance","AWS Batch on Dedicated Hosts"],
+    "Fargate is serverless compute for both ECS and EKS."),
+  Q(3,0,4,"Instances in one VPC transfer large amounts of data to instances in the same VPC and AZ. How should they communicate for best performance and lowest cost?",
+    "Use private IP addresses within the VPC",
+    ["Route traffic through the Internet Gateway using public IPs","Use a NAT Gateway","Use S3 as an intermediary"],
+    "Private IP traffic within an AZ is fast and free. Public IP paths add latency and cost."),
+  Q(3,1,3,"A system must process a stream of IoT telemetry in real time and calculate rolling 5-minute averages. Which combination is most appropriate?",
+    "Kinesis Data Streams with Amazon Managed Service for Apache Flink",
+    ["SQS FIFO with nightly batch jobs","S3 with Athena queries every hour","SNS with email subscribers"],
+    "Flink provides windowed real-time analytics over Kinesis streams."),
+  Q(3,1,1,"A global application needs millisecond reads and writes for users on several continents using a key-value data model. What should be used?",
+    "DynamoDB global tables with replicas in each user Region",
+    ["A single RDS instance in us-east-1","S3 Cross-Region Replication","ElastiCache in one Region"],
+    "Global tables give local, low-latency reads and writes in each replica Region."),
+  Q(3,1,2,"A company's application uses HTTP and needs both static content caching and protection of a dynamic API origin at the edge. What should it use?",
+    "CloudFront with separate cache behaviours for static content and the API, and AWS WAF",
+    ["Global Accelerator only","Route 53 geolocation","An NLB with TLS"],
+    "CloudFront can cache static paths and pass dynamic paths through with caching disabled, while WAF filters requests at the edge."),
+  Q(3,0,2,"A CPU-bound batch workload is compatible with ARM. Which instance choice typically gives the best price-performance?",
+    "AWS Graviton-based compute optimised instances (for example C7g)",
+    ["x86 memory optimised instances","Burstable T2 instances","Dedicated Hosts"],
+    "Graviton instances offer better price-performance for compatible workloads."),
+  Q(3,0,3,"A company needs shared storage for hundreds of Linux containers on EKS across AZs, with storage that grows and shrinks automatically. What should be used?",
+    "Amazon EFS with the EFS CSI driver",
+    ["EBS gp3 volumes","Instance store","S3 Glacier"],
+    "EFS supports ReadWriteMany access from many pods across AZs and scales automatically."),
+
+  // ── Domain 4: Design Cost-Optimized Architectures ──
+  Q(4,0,2,"A company runs a steady 24/7 workload on EC2, Fargate and Lambda and expects instance families to change over the next 3 years. Which purchase option gives significant savings with the most flexibility?",
+    "Compute Savings Plans",
+    ["Standard Reserved Instances","Spot Instances","Dedicated Hosts"],
+    "Compute Savings Plans apply across instance families, sizes, Regions, OS, Fargate and Lambda."),
+  Q(4,0,2,"A data processing job is fault tolerant, can be stopped and restarted at any time, and runs for a few hours each night. What is the most cost-effective compute option?",
+    "EC2 Spot Instances",
+    ["On-Demand Instances","Reserved Instances","Dedicated Instances"],
+    "Spot provides discounts of up to 90% for interruptible workloads."),
+  Q(4,0,2,"A workload runs for a few hours on unpredictable days and cannot be interrupted. Which pricing model is most suitable?",
+    "On-Demand Instances",
+    ["3-year Reserved Instances","Spot Instances","Dedicated Hosts"],
+    "Short, unpredictable, uninterruptible workloads suit On-Demand; commitments would be underused and Spot can be interrupted."),
+  Q(4,0,2,"A stateless web tier runs in an Auto Scaling group with a steady baseline and unpredictable peaks. What reduces cost while keeping availability?",
+    "A mixed instances policy: On-Demand (covered by Savings Plans) for the baseline and Spot across several instance types for peaks",
+    ["Spot only with a single instance type","Dedicated Hosts for all instances","On-Demand only for all capacity"],
+    "Combining committed baseline capacity with diversified Spot capacity cuts cost while tolerating Spot interruptions."),
+  Q(4,0,3,"Data is accessed frequently for 30 days, rarely for the next 90 days, and then must be archived for 5 years with retrieval in hours acceptable. What is the most cost-effective approach?",
+    "A lifecycle rule: Standard → Standard-IA at 30 days → Glacier Flexible Retrieval or Deep Archive at 120 days → expire at 5 years",
+    ["Keep everything in S3 Standard","Store everything in EBS snapshots","Move everything to One Zone-IA immediately"],
+    "Lifecycle transitions match storage class to the access pattern as data ages."),
+  Q(4,0,3,"A data lake has objects with unknown and changing access patterns. The team wants to reduce storage cost with no operational effort or retrieval fees. Which storage class?",
+    "S3 Intelligent-Tiering",
+    ["S3 Standard-IA","S3 Glacier Deep Archive","S3 One Zone-IA"],
+    "Intelligent-Tiering moves objects between access tiers automatically without retrieval charges."),
+  Q(4,0,3,"Thumbnails can be regenerated from originals if lost and are accessed infrequently. Which storage class is most cost-effective?",
+    "S3 One Zone-IA",
+    ["S3 Standard","S3 Intelligent-Tiering","S3 Glacier Deep Archive"],
+    "One Zone-IA is cheaper than Standard-IA and suits re-creatable, infrequently accessed data that needs millisecond access."),
+  Q(4,0,3,"Compliance archives must be kept for 10 years, are almost never read, and a 48-hour retrieval time is acceptable. What is the cheapest option?",
+    "S3 Glacier Deep Archive",
+    ["S3 Glacier Instant Retrieval","S3 Standard-IA","EFS Infrequent Access"],
+    "Deep Archive is the lowest-cost storage class, with retrieval in 12 to 48 hours."),
+  Q(4,0,3,"S3 costs keep growing in a versioned bucket even though the current data size is stable. What is the most likely cause and fix?",
+    "Noncurrent object versions and incomplete multipart uploads accumulate; add lifecycle rules to expire them",
+    ["S3 Transfer Acceleration charges; disable it","Bucket policies are charged per rule; remove them","KMS keys expire; rotate them"],
+    "Old versions are billed like current objects. Lifecycle rules for noncurrent versions and incomplete uploads control this."),
+  Q(4,0,3,"Many EBS volumes are gp2. The team wants lower cost without reducing performance or downtime. What should it do?",
+    "Modify the volumes to gp3 using Elastic Volumes",
+    ["Move data to instance store","Convert to io2","Snapshot and delete the volumes"],
+    "gp3 is about 20% cheaper per GB than gp2 with a 3,000 IOPS baseline, and the change is online."),
+  Q(4,2,1,"EC2 instances in private subnets download large datasets from S3 through a NAT Gateway, and data processing charges are high. What is the most cost-effective change?",
+    "Add an S3 gateway VPC endpoint to the private route tables",
+    ["Add more NAT Gateways","Move the instances to public subnets with Elastic IPs","Use an interface endpoint for EC2"],
+    "S3 gateway endpoints are free and bypass the NAT Gateway for S3 traffic."),
+  Q(4,2,4,"Which data transfer is typically free?",
+    "Data transferred into AWS from the internet",
+    ["Data transferred out to the internet","Data transferred between Availability Zones","Data processed by a NAT Gateway"],
+    "Inbound data transfer is free; outbound, inter-AZ and NAT processing are charged."),
+  Q(4,2,4,"A company serves large files from EC2 instances directly to internet users and pays high data transfer out costs. What can reduce cost and improve performance?",
+    "Serve the files through CloudFront",
+    ["Use Elastic IPs","Move instances to another Region","Enable detailed monitoring"],
+    "CloudFront caching reduces origin load, and its data transfer pricing is often lower than direct EC2 egress."),
+  Q(4,2,4,"A finance team wants an email alert when forecasted monthly spend will exceed 10,000 USD. What should be configured?",
+    "An AWS Budgets cost budget with a forecasted threshold alert",
+    ["A CloudTrail trail","AWS Config rule","Trusted Advisor security checks"],
+    "AWS Budgets alerts on actual or forecasted cost and usage."),
+  Q(4,2,4,"Management wants to see monthly cost broken down by project across 20 accounts. What should be done?",
+    "Tag resources with a Project tag, activate it as a cost allocation tag, and analyse with Cost Explorer under consolidated billing",
+    ["Create a separate payment card per account","Use CloudWatch dashboards","Enable VPC Flow Logs"],
+    "Cost allocation tags plus consolidated billing give per-project cost across accounts."),
+  Q(4,2,4,"An operations team suspects many EC2 instances are over-provisioned. Which service gives right-sizing recommendations based on utilisation?",
+    "AWS Compute Optimizer",
+    ["AWS Config","Amazon Inspector","AWS Artifact"],
+    "Compute Optimizer analyses metrics and recommends instance types, Auto Scaling group configurations, EBS volumes and Lambda memory."),
+  Q(4,2,4,"Development environments run on EC2 24/7 but are used only during business hours. What reduces cost with little effort?",
+    "Stop the instances outside business hours with a schedule (for example Instance Scheduler or EventBridge Scheduler)",
+    ["Buy 3-year Reserved Instances for them","Move them to Dedicated Hosts","Increase their instance size"],
+    "Stopped instances do not incur compute charges; scheduling stops and starts automates savings."),
+  Q(4,1,4,"An internal API receives a few hundred requests per day at random times. Which architecture minimises cost?",
+    "API Gateway with AWS Lambda",
+    ["Two EC2 instances behind an ALB running 24/7","An EKS cluster with three nodes","A Dedicated Host"],
+    "Serverless pay-per-request pricing costs almost nothing at low, sporadic volume."),
+  Q(4,1,1,"A database has unpredictable usage with long idle periods and occasional spikes. Which relational option minimises cost?",
+    "Aurora Serverless v2",
+    ["A large provisioned RDS instance","RDS with Provisioned IOPS","A self-managed database on Dedicated Hosts"],
+    "Aurora Serverless v2 scales capacity automatically with demand, so you pay for what you use."),
+  Q(4,1,1,"A DynamoDB table has steady, predictable traffic all day. Which capacity mode is usually cheaper?",
+    "Provisioned capacity with auto scaling",
+    ["On-demand capacity","DAX only","Global tables"],
+    "Provisioned capacity costs less per request for steady, predictable traffic; on-demand suits spiky or unknown traffic."),
+  Q(4,1,1,"A DynamoDB table stores session data that is useless after 24 hours. How can storage cost be reduced automatically at no extra charge?",
+    "Enable TTL on an expiry timestamp attribute",
+    ["Use point-in-time recovery","Add a global secondary index","Use DynamoDB Streams to delete items"],
+    "TTL deletes expired items automatically without consuming write capacity."),
+  Q(4,0,0,"Which approach to cost optimisation should come before purchasing Savings Plans?",
+    "Right-size resources based on actual utilisation",
+    ["Buy the largest commitment possible","Move all workloads to Dedicated Hosts","Disable Auto Scaling"],
+    "Commit after right-sizing, or you lock oversized capacity into the commitment."),
+  Q(4,2,2,"A company must move 500 TB of archive data to S3. Its internet link is 1 Gbps and already heavily used. What is the most cost-effective and timely method?",
+    "AWS Snowball Edge devices",
+    ["AWS DataSync over the existing link","S3 Transfer Acceleration","A new Direct Connect connection"],
+    "Offline transfer avoids saturating the link and finishes far sooner than weeks or months of network transfer."),
+  Q(4,2,2,"A company replicates backups to another Region only to meet a 24-hour RPO and RTO for a non-critical system. Which option keeps DR cost lowest?",
+    "Copy backups to the second Region with AWS Backup and rebuild with infrastructure as code when needed",
+    ["Run a warm standby in the second Region","Run active-active in both Regions","Keep a pilot light database replica running"],
+    "Backup and restore has the lowest running cost when long RPO/RTO are acceptable."),
+  Q(4,2,3,"Athena query costs are high because each query scans full JSON datasets. What reduces cost the most?",
+    "Convert the data to compressed Parquet and partition it",
+    ["Run the queries less often","Store the data in S3 Standard-IA","Increase the Athena workgroup timeout"],
+    "Athena charges per byte scanned; columnar compressed and partitioned data scans much less."),
+  Q(4,0,4,"Two private subnets in different AZs share one NAT Gateway, and inter-AZ data transfer charges are high. What reduces cost and improves resilience?",
+    "Deploy a NAT Gateway in each AZ and route each subnet to its local NAT Gateway",
+    ["Replace the NAT Gateway with an Internet Gateway route","Use VPC peering","Use a Transit Gateway"],
+    "Local NAT Gateways avoid cross-AZ data charges and remove the single-AZ dependency."),
+  Q(4,0,2,"A company has a licence that is billed per physical core and needs to use it on AWS. Which option allows this most cost-effectively?",
+    "EC2 Dedicated Hosts with the licence brought to AWS",
+    ["Spot Instances","Dedicated Instances without host visibility","Lambda functions"],
+    "Dedicated Hosts expose physical cores and sockets for per-core licensing."),
+  Q(4,1,4,"A container workload runs at high, steady utilisation 24/7. Which option is usually cheaper than Fargate for this pattern?",
+    "ECS on EC2 instances covered by Savings Plans",
+    ["ECS on Fargate On-Demand","Lambda container images","Dedicated Hosts on-demand"],
+    "At sustained high utilisation, densely packed EC2 capacity with commitments usually costs less than per-task Fargate pricing."),
+  QM(4,0,3,"A company wants to reduce storage costs for EBS and EFS without affecting the application. Which actions help? (Choose two.)",
+    ["Delete unattached EBS volumes and old snapshots no longer needed","Enable EFS lifecycle management to move cold files to Infrequent Access"],
+    ["Convert all volumes to io2","Enable EFS provisioned throughput at maximum","Copy all snapshots to every Region"],
+    "Removing orphaned resources and tiering cold file data reduce cost with no application change."),
+  QM(4,2,4,"Which tools help identify cost savings opportunities? (Choose two.)",
+    ["AWS Cost Explorer with Savings Plans recommendations","AWS Trusted Advisor cost optimisation checks"],
+    ["AWS CloudTrail","Amazon Inspector","AWS Shield Advanced"],
+    "Cost Explorer analyses spend and recommends commitments; Trusted Advisor flags idle and underused resources."),
+  QM(4,0,2,"A stateless batch analytics fleet runs every night for 3 hours and can tolerate interruptions. Which choices minimise cost? (Choose two.)",
+    ["Use Spot Instances diversified across several instance types","Use Graviton instance types where the software supports ARM"],
+    ["Buy 3-year Standard Reserved Instances","Use Dedicated Hosts","Keep the fleet running 24/7 on On-Demand"],
+    "Spot gives the deepest discount for interruptible work; Graviton improves price-performance."),
+  Q(4,2,4,"CloudWatch Logs storage costs keep rising because logs are kept forever. What is the simplest fix?",
+    "Set a retention period on the log groups and export long-term logs to S3 if needed",
+    ["Disable CloudWatch Logs","Move logs to EBS","Use detailed monitoring"],
+    "Log groups default to never expire. A retention policy deletes old events automatically."),
+  Q(4,2,4,"A company with 40 AWS accounts wants volume pricing discounts and Savings Plans benefits shared across accounts. What should it use?",
+    "AWS Organizations with consolidated billing",
+    ["Separate invoices per account","AWS Control Tower without Organizations","AWS Budgets per account"],
+    "Consolidated billing combines usage for volume tiers and shares Savings Plans and RI discounts across accounts."),
+  Q(4,1,3,"An application polls an SQS queue constantly and most responses are empty, increasing API request costs. What reduces cost?",
+    "Enable long polling with a wait time of up to 20 seconds",
+    ["Switch to a FIFO queue","Add a dead-letter queue","Reduce the visibility timeout"],
+    "Long polling waits for messages to arrive, reducing the number of empty receive requests."),
+  Q(4,0,4,"A company pays for several Elastic IP addresses and public IPv4 addresses that are not needed. What should it know?",
+    "All public IPv4 addresses, including unused Elastic IPs, are charged hourly, so release those not needed",
+    ["Elastic IPs are always free","Only IPv6 addresses are charged","Public IPs are charged only when traffic flows"],
+    "AWS charges for every public IPv4 address. Release unused ones or move to IPv6 where possible."),
+];
+
+
+export default function SaaDashboard() {
+  return (
+    <div className="saa-page">
+      <header className="site-navigation saa-header">
+        <div className="site-navigation-inner">
+          <a className="site-brand" href="../index.html" aria-label="Learn with Sam - return to Learning Hub">
+            <span className="site-brand-mark">&gt;_</span><span>Learn with <em>Sam</em></span>
+          </a>
+        </div>
+      </header>
+      <main className="saa-main"><SaaLearningContent /></main>
+      <footer className="saa-footer">
+        <p>&copy; 2026 <a href="../about/index.html">Saima Usman</a>. All Rights Reserved.</p>
+        <p>Note: Unofficial study aid, not affiliated with or endorsed by Amazon Web Services. AWS and Amazon Web Services are trademarks of Amazon.com, Inc. or its affiliates.</p>
+      </footer>
+    </div>
+  );
+}
+
+function SaaLearningContent() {
+  const [activePhase, setActivePhase] = useState(0);
+  const [activeTab, setActiveTab] = useState("topics");
+  const [expandedTopic, setExpandedTopic] = useState(null);
+  const [openSolution, setOpenSolution] = useState(null);
+  const [showCheatsheet, setShowCheatsheet] = useState(false);
+  const [activeCheatTab, setActiveCheatTab] = useState("iam");
+  const [mcqAnswers, setMcqAnswers] = useState({});
+  const [mcqChecked, setMcqChecked] = useState({});
+  const [activeScenario, setActiveScenario] = useState(null);
+  const [completedSteps, setCompletedSteps] = useState({});
+  const [copiedCmd, setCopiedCmd] = useState(null);
+  const [glossaryWord, setGlossaryWord] = useState(null);
+  const [showLinks, setShowLinks] = useState(false);
+
+  useEffect(() => { window.scrollTo({top:0, behavior:"instant"}); }, [activeScenario]);
+  useEffect(() => {
+    if (!glossaryWord) return;
+    const close = event => { if (event.key === "Escape") setGlossaryWord(null); };
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [glossaryWord]);
+
+  const phase = PHASES[activePhase];
+  const phaseId = phase.id;
+  const color = phase.color;
+  const rgb = phaseRGB[phaseId];
+  const font = "'Poppins', sans-serif";
+  const mono = "'Fira Code', 'Courier New', monospace";
+
+  const pickAnswer = (qi, oi) => { if (mcqChecked[phaseId]) return; setMcqAnswers(p => ({...p, [`${phaseId}-${qi}`]:oi})); };
+  const submitQuiz = () => setMcqChecked(p => ({...p, [phaseId]:true}));
+  const retryQuiz = () => {
+    setMcqChecked(p => ({...p, [phaseId]:false}));
+    setMcqAnswers(p => { const n={...p}; phase.assessment.questions.forEach((_,i) => delete n[`${phaseId}-${i}`]); return n; });
+  };
+  const quizScore = pid => {
+    const qs = PHASES.find(p => p.id===pid).assessment.questions;
+    const c = qs.filter((q,i) => mcqAnswers[`${pid}-${i}`]===q.answer).length;
+    return {correct:c, total:qs.length, pct:Math.round((c/qs.length)*100)};
+  };
+  const totalPct = () => {
+    const done = PHASES.reduce((s,p) => s+(mcqChecked[p.id] ? quizScore(p.id).correct : 0), 0);
+    const total = PHASES.reduce((s,p) => s+p.assessment.questions.length, 0);
+    return Math.round((done/total)*100);
+  };
+  const answeredCount = phase.assessment.questions.filter((_,i) => mcqAnswers[`${phaseId}-${i}`]!==undefined).length;
+  const allAnswered = answeredCount===phase.assessment.questions.length;
+  const diffColor = d => d==="Easy" ? T.green : d==="Medium" ? T.amber : T.red;
+  const toggleStep = (sid,si) => { const k=`${sid}-${si}`; setCompletedSteps(p => ({...p, [k]:!p[k]})); };
+  const stepDone = (sid,si) => !!completedSteps[`${sid}-${si}`];
+  const scenarioDone = scen => scen.steps.every((_,i) => stepDone(scen.id,i));
+
+  const copyCmd = async (cmd) => {
+    try { await navigator.clipboard.writeText(cmd); }
+    catch {
+      const ta = document.createElement('textarea');
+      ta.value=cmd; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      try { document.execCommand('copy'); } catch {}
+      document.body.removeChild(ta);
+    }
+    setCopiedCmd(cmd);
+    setTimeout(() => setCopiedCmd(null), 1500);
+  };
+
+  const phaseScenarios = SCENARIOS.filter(s => s.phase===phaseId);
+
+  const renderKeywords = (text, keywords) => {
+    if (!keywords?.length) return text;
+    const parts=[], sorted=[...keywords].sort((a,b) => b.length-a.length);
+    let remaining=text, idx=0;
+    while (remaining.length>0) {
+      let found=false;
+      for (const kw of sorted) {
+        if (remaining.indexOf(kw)===0) {
+          const def=GLOSSARY[kw];
+          parts.push(<span key={idx++} role="button" tabIndex={0} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") {e.preventDefault(); setGlossaryWord(kw);} }} onClick={() => setGlossaryWord(glossaryWord===kw ? null : kw)}
+            style={{color, textDecoration:"underline dotted", cursor:"pointer", fontWeight:600}}
+            title={def ? def.substring(0,80)+"…" : kw}>{kw}</span>);
+          remaining=remaining.slice(kw.length); found=true; break;
+        }
+      }
+      if (!found) {
+        let nextIdx=remaining.length;
+        for (const kw of sorted) { const i=remaining.indexOf(kw); if (i>0&&i<nextIdx) nextIdx=i; }
+        parts.push(<span key={idx++}>{remaining.slice(0,nextIdx)}</span>);
+        remaining=remaining.slice(nextIdx);
+      }
+    }
+    return parts;
+  };
+
+  const renderExpl = (text, keywords) => text.split('\n').map((line,i) => {
+    if (!line.trim()) return <br key={i}/>;
+    return <p key={i} style={{margin:"0 0 6px", fontSize:"14px", color:T.textSub, lineHeight:"1.85", whiteSpace:"pre-wrap", wordBreak:"break-word"}}>{renderKeywords(line, keywords)}</p>;
+  });
+
+  // ── Mock exam state ──
+  const [view, setView] = useState("dashboard");          // "dashboard" | "exam"
+  const [exam, setExam] = useState(null);                  // null = menu, else { stage: "running" | "results", ... }
+  const [tick, setTick] = useState(0);
+  const [modal, setModal] = useState(null);                // null | "submit" | "quit"
+  const [reviewFilter, setReviewFilter] = useState("wrong");
+  const [history, setHistory] = useState(loadHistory);
+
+  useEffect(() => {
+    const fromHash = () => { if (location.hash === "#saa-exam") { setActiveScenario(null); setView("exam"); } };
+    fromHash();
+    window.addEventListener("hashchange", fromHash);
+    return () => window.removeEventListener("hashchange", fromHash);
+  }, []);
+  useEffect(() => {
+    if (!exam || exam.stage !== "running") return;
+    const id = setInterval(() => setTick(t => t + 1), 1000);
+    const warn = e => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => { clearInterval(id); window.removeEventListener("beforeunload", warn); };
+  }, [exam && exam.stage]);
+  useEffect(() => {
+    if (exam && exam.stage === "running" && Date.now() >= exam.endAt) finishExam(true);
+  }, [tick]);
+  useEffect(() => {
+    if (!modal) return;
+    const close = e => { if (e.key === "Escape") setModal(null); };
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [modal]);
+
+  const toTop = () => { try { window.scrollTo({top:0, behavior:"instant"}); } catch (e) {} };
+  function openExam() { setView("exam"); toTop(); }
+  function closeExam() {
+    setView("dashboard");
+    if (location.hash === "#saa-exam") { try { window.history.replaceState(null, "", location.pathname + location.search); } catch (e) {} }
+    toTop();
+  }
+  function buildQuestions(modeKey, weakKeys) {
+    const cfg = EXAM_MODES[modeKey];
+    let picked = [];
+    if (modeKey === "weak") {
+      const inWeak = q => weakKeys.includes(q.p + "-" + q.i);
+      picked = shuffle(QUESTION_BANK.filter(inWeak)).slice(0, 15);
+      if (picked.length < 8) {
+        const filler = shuffle(QUESTION_BANK.filter(q => !inWeak(q))).slice(0, 8 - picked.length);
+        picked = picked.concat(filler);
+      }
+    } else {
+      DOMAIN_IDS.forEach(d => {
+        const n = cfg.counts[d];
+        if (n) picked = picked.concat(shuffle(QUESTION_BANK.filter(q => q.d === d)).slice(0, n));
+      });
+    }
+    return shuffle(picked).map((q, id) => {
+      const opts = shuffle([...q.right, ...q.wrong]);
+      return { ...q, id, opts, ans: q.right.map(r => opts.indexOf(r)).sort((a, b) => a - b) };
+    });
+  }
+  function startExam(modeKey, weakKeys) {
+    const questions = buildQuestions(modeKey, weakKeys || []);
+    const cfg = EXAM_MODES[modeKey];
+    const minutes = cfg.minutes || Math.max(10, Math.ceil(questions.length * 1.5));
+    const now = Date.now();
+    setModal(null);
+    setExam({ stage:"running", mode:modeKey, minutes, questions, answers:{}, flags:{}, current:0, startedAt:now, endAt:now + minutes * 60000 });
+    toTop();
+  }
+  function scoreExam(ex, timedOut) {
+    const perDomain = {};
+    DOMAIN_IDS.forEach(d => { perDomain[d] = { c:0, t:0 }; });
+    const perTopic = {};
+    let correct = 0;
+    ex.questions.forEach((q, idx) => {
+      const ok = isRightAnswer(q, ex.answers[idx]);
+      if (ok) correct++;
+      perDomain[q.d].t++;
+      if (ok) perDomain[q.d].c++;
+      const k = q.p + "-" + q.i;
+      if (!perTopic[k]) perTopic[k] = { key:k, c:0, t:0, p:q.p, i:q.i, doms:{} };
+      perTopic[k].t++;
+      perTopic[k].doms[q.d] = true;
+      if (ok) perTopic[k].c++;
+    });
+    const total = ex.questions.length;
+    const weak = Object.values(perTopic)
+      .filter(v => (v.c / v.t) * 100 < PASS_MARK)
+      .sort((a, b) => a.c / a.t - b.c / b.t)
+      .map(v => v.key);
+    return {
+      correct, total, pct:Math.round((correct / total) * 100), perDomain, perTopic, weak, timedOut,
+      answered:ex.questions.filter((_, i) => hasAnswer(ex.answers[i])).length,
+      timeUsed:Math.max(0, Math.min(Date.now(), ex.endAt) - ex.startedAt),
+    };
+  }
+  function finishExam(timedOut) {
+    if (!exam || exam.stage !== "running") return;
+    const result = scoreExam(exam, !!timedOut);
+    const domPct = {};
+    DOMAIN_IDS.forEach(d => { const v = result.perDomain[d]; domPct[d] = v.t ? Math.round((v.c / v.t) * 100) : null; });
+    const entry = { t:Date.now(), mode:exam.mode, pct:result.pct, correct:result.correct, total:result.total, domains:domPct, weak:result.weak };
+    const next = [entry, ...history].slice(0, 10);
+    setHistory(next);
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(next)); } catch (e) {}
+    setExam({ ...exam, stage:"results", result });
+    setReviewFilter(result.correct < result.total ? "wrong" : "all");
+    setModal(null);
+    toTop();
+  }
+  function clearHistory() {
+    setHistory([]);
+    try { localStorage.removeItem(HISTORY_KEY); } catch (e) {}
+  }
+  const pickExamAnswer = (qi, oi) => setExam(ex => {
+    const q = ex.questions[qi];
+    const cur = ex.answers[qi] || [];
+    let next;
+    if (!q.multi) next = [oi];
+    else if (cur.includes(oi)) next = cur.filter(x => x !== oi);
+    else if (cur.length < q.ans.length) next = [...cur, oi];
+    else next = [...cur.slice(1), oi];
+    return { ...ex, answers:{ ...ex.answers, [qi]:next } };
+  });
+  const toggleExamFlag = qi => setExam(ex => ({ ...ex, flags:{ ...ex.flags, [qi]:!ex.flags[qi] } }));
+  const goExamQuestion = qi => setExam(ex => ({ ...ex, current:Math.max(0, Math.min(ex.questions.length - 1, qi)) }));
+  function studyTopic(p, i) {
+    closeExam();
+    setActivePhase(p);
+    setActiveTab("topics");
+    setExpandedTopic(i);
+    setOpenSolution(null);
+  }
+
+  // ── Mock exam views ──
+  const backBtn = {background:"transparent", border:"1px solid rgba(255,255,255,0.15)", color:T.textSub, padding:"6px 14px", borderRadius:"8px", cursor:"pointer", fontSize:"13px", fontFamily:font};
+  const modeTotal = k => Object.values(EXAM_MODES[k].counts).reduce((a, b) => a + b, 0);
+  const topicTitle = (p, i) => PHASES[p].topics[i].title;
+  const domBadge = d => (
+    <span title={DOMAINS[d].name} style={{background:`rgba(${DOMAINS[d].rgb},0.18)`, color:DOMAINS[d].color, fontSize:"10px", fontWeight:700, letterSpacing:"1px", padding:"3px 9px", borderRadius:"20px", whiteSpace:"nowrap"}}>
+      D{d} · {DOMAINS[d].short.toUpperCase()}
+    </span>
+  );
+
+  function renderExamMenu() {
+    const last = history[0];
+    const lastWeak = last && last.weak ? last.weak : [];
+    const best = history.length ? Math.max(...history.map(h => h.pct)) : null;
+    const cardBtn = (mk, onClick, label) => (
+      <button onClick={onClick}
+        style={{width:"100%", background:`rgba(${EXAM_MODES[mk].rgb},0.16)`, border:`1px solid ${EXAM_MODES[mk].color}`, color:EXAM_MODES[mk].color, padding:"8px 12px", borderRadius:"8px", cursor:"pointer", fontSize:"13px", fontWeight:600, fontFamily:font}}>
+        {label}
+      </button>
+    );
+    const modeCard = (k, extra) => {
+      const m = EXAM_MODES[k];
+      return (
+        <div key={k} style={{background:T.card, border:`1px solid rgba(${m.rgb},0.3)`, borderRadius:"14px", overflow:"hidden", display:"flex", flexDirection:"column"}}>
+          <div style={{height:"3px", background:m.color}}/>
+          <div style={{padding:"16px", display:"flex", flexDirection:"column", flex:1}}>
+            <div style={{fontSize:"26px", marginBottom:"6px", color:m.color}}>{m.icon}</div>
+            <h3 style={{margin:"0 0 3px", fontSize:"15px", fontWeight:700}}>{m.label}</h3>
+            {extra || <div style={{fontSize:"12px", color:m.color, fontWeight:600, marginBottom:"8px"}}>{modeTotal(k)} questions · {m.minutes} min</div>}
+            <p style={{margin:"0 0 14px", fontSize:"12px", color:T.textSub, lineHeight:"1.65", flex:1}}>{m.desc}</p>
+            {cardBtn(k, () => startExam(k), "▶ Start")}
+          </div>
+        </div>
+      );
+    };
+    return (
+      <div style={{padding:"20px var(--saa-gutter)", width:"100%", boxSizing:"border-box"}}>
+        <button onClick={closeExam} style={backBtn}>← Back to Dashboard</button>
+        <div style={{display:"flex", alignItems:"center", gap:"12px", margin:"16px 0 8px", flexWrap:"wrap"}}>
+          <div style={{fontSize:"34px"}}>📝</div>
+          <div style={{flex:1, minWidth:0}}>
+            <div style={{color:T.green, fontSize:"11px", fontWeight:600, letterSpacing:"1.5px"}}>SAA-C03 EXAM SIMULATOR</div>
+            <h2 style={{margin:"2px 0 0", fontSize:"22px", fontWeight:700}}>Mock Exam Centre</h2>
+          </div>
+          {best !== null && (
+            <div style={{background:"rgba(52,211,153,0.1)", border:"1px solid rgba(52,211,153,0.3)", borderRadius:"12px", padding:"8px 14px", textAlign:"center"}}>
+              <div style={{fontSize:"20px", fontWeight:700, color:T.green, lineHeight:1}}>{best}%</div>
+              <div style={{fontSize:"10px", color:T.textMute, marginTop:"3px"}}>BEST SCORE</div>
+            </div>
+          )}
+        </div>
+        <p style={{margin:"0 0 14px", fontSize:"13px", color:T.textSub, lineHeight:"1.75"}}>
+          Test your SAA-C03 readiness under exam-like conditions: a countdown timer, no answers shown until you submit, and the option to flag questions for review.
+          Afterwards you get your preparedness percentage, a score for each of the four SAA-C03 domains, and a ranked list of the lessons to revisit first.
+        </p>
+        <div style={{display:"flex", gap:"6px", flexWrap:"wrap", marginBottom:"14px"}}>
+          {["⏱ Timed", "🙈 No feedback until you submit", "⚖ Weighted like the real SAA-C03", "☑ Includes choose-two questions", "🔀 Questions and answers shuffled every attempt", `📚 ${QUESTION_BANK.length}-question bank`, `✅ Pass mark ${PASS_MARK}%`].map((c, i) => (
+            <span key={i} style={{background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", color:T.textSub, fontSize:"11px", padding:"4px 10px", borderRadius:"20px"}}>{c}</span>
+          ))}
+        </div>
+
+        <div style={{background:"rgba(251,191,36,0.07)", border:"1px solid rgba(251,191,36,0.3)", borderRadius:"12px", padding:"12px 14px", marginBottom:"18px", display:"flex", gap:"10px", alignItems:"flex-start"}}>
+          <span style={{fontSize:"18px", flexShrink:0}}>💡</span>
+          <p style={{margin:0, fontSize:"12px", color:T.textSub, lineHeight:"1.7"}}>
+            <b style={{color:T.amber}}>The real SAA-C03</b> has 65 multiple-choice and multiple-response questions in 130 minutes. 15 are unscored, the result is scaled from 100 to 1000, and 720 passes. The Full Mock below uses the same length, time limit and domain weighting.
+            Most questions are scenarios with two plausible answers: pick the one that best fits the stated requirement (cost, operational overhead, availability). Finish with the free <a href="https://skillbuilder.aws/" target="_blank" rel="noopener noreferrer" style={{color:T.amber}}>official practice question set</a> on AWS Skill Builder.
+          </p>
+        </div>
+
+        <div style={{background:T.card, border:"1px solid rgba(255,255,255,0.08)", borderRadius:"14px", padding:"14px 16px", marginBottom:"18px"}}>
+          <div style={{color:T.pink, fontSize:"11px", fontWeight:600, letterSpacing:"1px", marginBottom:"10px"}}>SAA-C03 EXAM DOMAINS</div>
+          <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))", gap:"8px"}}>
+            {DOMAIN_IDS.map(d => (
+              <div key={d} style={{display:"flex", alignItems:"center", gap:"10px", background:`rgba(${DOMAINS[d].rgb},0.07)`, border:`1px solid rgba(${DOMAINS[d].rgb},0.25)`, borderRadius:"10px", padding:"8px 10px"}}>
+                <div style={{fontSize:"18px", fontWeight:700, color:DOMAINS[d].color, minWidth:"42px"}}>{DOMAINS[d].weight}</div>
+                <div style={{fontSize:"12px", color:T.textSub, lineHeight:"1.4"}}><b style={{color:T.text}}>D{d}</b> · {DOMAINS[d].name}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(250px,1fr))", gap:"12px"}}>
+          {["full", "quick"].map(k => modeCard(k))}
+          {lastWeak.length > 0 && (
+            <div style={{background:T.card, border:`1px solid rgba(${EXAM_MODES.weak.rgb},0.35)`, borderRadius:"14px", overflow:"hidden", display:"flex", flexDirection:"column"}}>
+              <div style={{height:"3px", background:T.red}}/>
+              <div style={{padding:"16px", display:"flex", flexDirection:"column", flex:1}}>
+                <div style={{fontSize:"26px", marginBottom:"6px"}}>{EXAM_MODES.weak.icon}</div>
+                <h3 style={{margin:"0 0 3px", fontSize:"15px", fontWeight:700}}>{EXAM_MODES.weak.label}</h3>
+                <div style={{fontSize:"12px", color:T.red, fontWeight:600, marginBottom:"8px"}}>{lastWeak.length} weak lesson{lastWeak.length > 1 ? "s" : ""} from your last attempt</div>
+                <p style={{margin:"0 0 14px", fontSize:"12px", color:T.textSub, lineHeight:"1.65", flex:1}}>
+                  {lastWeak.slice(0, 4).map(k => { const [p, i] = k.split("-").map(Number); return topicTitle(p, i); }).join(" · ")}
+                  {lastWeak.length > 4 ? ` · +${lastWeak.length - 4} more` : ""}
+                </p>
+                {cardBtn("weak", () => startExam("weak", lastWeak), "▶ Practise weak areas")}
+              </div>
+            </div>
+          )}
+        </div>
+        <div style={{color:T.textMute, fontSize:"11px", fontWeight:600, letterSpacing:"1px", margin:"20px 0 10px"}}>DOMAIN DRILLS</div>
+        <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:"12px"}}>
+          {DOMAIN_IDS.map(d => modeCard("d" + d, <div style={{fontSize:"12px", color:DOMAINS[d].color, fontWeight:600, marginBottom:"8px"}}>{DOMAINS[d].short} · {DOMAINS[d].weight} · {modeTotal("d" + d)} Qs · {EXAM_MODES["d" + d].minutes} min</div>))}
+        </div>
+
+        {history.length > 0 && (
+          <div style={{marginTop:"22px"}}>
+            <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"8px"}}>
+              <div style={{color:T.pink, fontSize:"11px", fontWeight:600, letterSpacing:"1px"}}>YOUR RECENT ATTEMPTS</div>
+              <button onClick={clearHistory} style={{background:"transparent", border:"none", color:T.textDim, fontSize:"11px", cursor:"pointer", fontFamily:font, textDecoration:"underline"}}>Clear history</button>
+            </div>
+            <div style={{background:T.card, border:"1px solid rgba(255,255,255,0.08)", borderRadius:"12px", overflow:"hidden"}}>
+              {history.slice(0, 6).map((h, i) => {
+                const b = band(h.pct);
+                return (
+                  <div key={i} style={{display:"flex", alignItems:"center", gap:"12px", padding:"10px 14px", borderBottom:i < Math.min(history.length, 6) - 1 ? "1px solid rgba(255,255,255,0.06)" : "none", flexWrap:"wrap"}}>
+                    <div style={{minWidth:"52px", fontSize:"18px", fontWeight:700, color:b.color}}>{h.pct}%</div>
+                    <div style={{flex:1, minWidth:"140px"}}>
+                      <div style={{fontSize:"13px", fontWeight:600}}>{EXAM_MODES[h.mode] ? EXAM_MODES[h.mode].label : h.mode}</div>
+                      <div style={{fontSize:"11px", color:T.textMute}}>{new Date(h.t).toLocaleString([], { dateStyle:"medium", timeStyle:"short" })} · {h.correct}/{h.total} correct</div>
+                    </div>
+                    <div style={{display:"flex", gap:"6px", flexWrap:"wrap"}}>
+                      {DOMAIN_IDS.map(d => h.domains && h.domains[d] !== null && h.domains[d] !== undefined && (
+                        <span key={d} style={{fontSize:"10px", color:DOMAINS[d].color, background:`rgba(${DOMAINS[d].rgb},0.12)`, padding:"2px 7px", borderRadius:"5px", fontWeight:600}}>D{d} {h.domains[d]}%</span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{fontSize:"11px", color:T.textDim, marginTop:"6px"}}>Saved in this browser only.</div>
+          </div>
+        )}
+
+        <p style={{margin:"20px 0 0", fontSize:"11px", color:T.textDim, lineHeight:"1.7"}}>
+          These are original practice questions written for this dashboard, not real exam questions. The real exam reports a scaled score where 720/1000 passes (treated as {PASS_MARK}% here), so your percentage is an indicator of readiness, not a prediction. There is no penalty for guessing, so always answer every question.
+        </p>
+      </div>
+    );
+  }
+
+  function renderExamRunning() {
+    const ex = exam;
+    const qs = ex.questions;
+    const q = qs[ex.current];
+    const remaining = Math.max(0, Math.round((ex.endAt - Date.now()) / 1000));
+    const mm = String(Math.floor(remaining / 60)).padStart(2, "0");
+    const ss = String(remaining % 60).padStart(2, "0");
+    const low = remaining <= 300;
+    const answered = qs.reduce((n, _, i) => n + (hasAnswer(ex.answers[i]) ? 1 : 0), 0);
+    const flagged = qs.reduce((n, _, i) => n + (ex.flags[i] ? 1 : 0), 0);
+    const isLast = ex.current === qs.length - 1;
+    const chosen = ex.answers[ex.current];
+    const sbtn = (c, filled) => ({background:filled ? `rgba(${c},0.18)` : "transparent", border:`1px solid rgb(${c})`, color:`rgb(${c})`, padding:"7px 14px", borderRadius:"8px", cursor:"pointer", fontSize:"12px", fontWeight:600, fontFamily:font, whiteSpace:"nowrap"});
+    return (
+      <div>
+        <div style={{position:"sticky", top:68, zIndex:20, background:T.surface, borderBottom:"1px solid rgba(255,255,255,0.09)", padding:"10px var(--saa-gutter)"}}>
+          <div style={{display:"flex", alignItems:"center", gap:"10px", flexWrap:"wrap"}}>
+            <div style={{flex:1, minWidth:"170px"}}>
+              <div style={{fontSize:"10px", color:T.textDim, letterSpacing:"1.5px", fontWeight:600}}>{EXAM_MODES[ex.mode].label.toUpperCase()}</div>
+              <div style={{fontSize:"14px", fontWeight:600}}>
+                Question {ex.current + 1} of {qs.length} <span style={{color:T.textMute, fontWeight:400, fontSize:"12px"}}>· {answered} answered</span>
+              </div>
+              <div style={{height:"4px", background:"rgba(255,255,255,0.08)", borderRadius:"2px", marginTop:"6px", overflow:"hidden"}}>
+                <div style={{height:"100%", width:`${(answered / qs.length) * 100}%`, background:T.green, transition:"width .2s"}}/>
+              </div>
+            </div>
+            <div role="timer" aria-label="Time remaining" style={{fontFamily:mono, fontSize:"18px", fontWeight:500, color:low ? T.red : T.text, background:low ? "rgba(248,113,113,0.12)" : "rgba(255,255,255,0.06)", border:`1px solid ${low ? "rgba(248,113,113,0.5)" : "rgba(255,255,255,0.12)"}`, padding:"6px 12px", borderRadius:"10px"}}>
+              ⏱ {mm}:{ss}
+            </div>
+            <button onClick={() => setModal("submit")} style={sbtn("52,211,153", true)}>Finish &amp; Submit</button>
+            <button onClick={() => setModal("quit")} aria-label="Exit exam" title="Exit exam" style={sbtn("122,143,166", false)}>✕</button>
+          </div>
+        </div>
+
+        <div style={{padding:"18px var(--saa-gutter)", width:"100%", boxSizing:"border-box", display:"flex", gap:"16px", flexWrap:"wrap", alignItems:"flex-start"}}>
+          <div style={{flex:"3 1 360px", minWidth:0}}>
+            <div style={{background:T.card, border:"1px solid rgba(255,255,255,0.09)", borderRadius:"14px", padding:"18px"}}>
+              <div style={{display:"flex", gap:"8px", alignItems:"center", marginBottom:"12px", flexWrap:"wrap"}}>
+                {domBadge(q.d)}
+                <span style={{fontSize:"11px", color:T.textMute}}>Question {ex.current + 1}</span>
+                {q.multi && <span style={{fontSize:"11px", color:T.pink, fontWeight:700, background:"rgba(244,114,182,0.12)", padding:"2px 8px", borderRadius:"6px"}}>CHOOSE {q.ans.length} · {(chosen || []).length}/{q.ans.length} selected</span>}
+                {ex.flags[ex.current] && <span style={{fontSize:"11px", color:T.amber, fontWeight:600}}>⚑ Marked for review</span>}
+              </div>
+              <div style={{fontSize:"15px", fontWeight:600, lineHeight:"1.7", marginBottom:"14px", wordBreak:"break-word"}}>{q.q}</div>
+              <div role={q.multi ? "group" : "radiogroup"} aria-label={`Question ${ex.current + 1} options`} style={{display:"flex", flexDirection:"column", gap:"8px"}}>
+                {q.opts.map((opt, oi) => {
+                  const sel = !!chosen && chosen.includes(oi);
+                  return (
+                    <div key={oi} role={q.multi ? "checkbox" : "radio"} aria-checked={sel} tabIndex={0} onClick={() => pickExamAnswer(ex.current, oi)} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickExamAnswer(ex.current, oi); } }}
+                      style={{display:"flex", alignItems:"flex-start", gap:"10px", padding:"11px 14px", borderRadius:"10px", cursor:"pointer", background:sel ? "rgba(34,211,238,0.12)" : "rgba(255,255,255,0.03)", border:`1px solid ${sel ? T.cyan : "rgba(255,255,255,0.1)"}`}}>
+                      <div style={{width:"16px", height:"16px", borderRadius:q.multi ? "4px" : "50%", border:`2px solid ${sel ? T.cyan : "rgba(255,255,255,0.25)"}`, background:sel ? T.cyan : "transparent", flexShrink:0, marginTop:"2px"}}/>
+                      <span style={{fontSize:"14px", color:sel ? T.text : T.textSub, lineHeight:"1.6", wordBreak:"break-word"}}>{opt}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{display:"flex", gap:"8px", marginTop:"16px", flexWrap:"wrap", alignItems:"center"}}>
+                <button onClick={() => goExamQuestion(ex.current - 1)} disabled={ex.current === 0}
+                  style={{...sbtn("184,197,214", false), opacity:ex.current === 0 ? 0.4 : 1, cursor:ex.current === 0 ? "not-allowed" : "pointer"}}>← Previous</button>
+                <button onClick={() => toggleExamFlag(ex.current)} style={sbtn("251,191,36", !!ex.flags[ex.current])}>
+                  {ex.flags[ex.current] ? "⚑ Unmark" : "⚐ Mark for review"}
+                </button>
+                <div style={{flex:1}}/>
+                {isLast
+                  ? <button onClick={() => setModal("submit")} style={sbtn("52,211,153", true)}>Review &amp; Submit</button>
+                  : <button onClick={() => goExamQuestion(ex.current + 1)} style={sbtn("34,211,238", true)}>Next →</button>}
+              </div>
+            </div>
+          </div>
+
+          <div style={{flex:"1 1 230px", minWidth:0}}>
+            <div style={{background:T.card, border:"1px solid rgba(255,255,255,0.09)", borderRadius:"14px", padding:"14px"}}>
+              <div style={{color:T.pink, fontSize:"11px", fontWeight:600, letterSpacing:"1px", marginBottom:"10px"}}>QUESTION NAVIGATOR</div>
+              <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(34px,1fr))", gap:"6px"}}>
+                {qs.map((_, i) => {
+                  const a = hasAnswer(ex.answers[i]);
+                  const f = !!ex.flags[i];
+                  const cur = i === ex.current;
+                  return (
+                    <button key={i} onClick={() => goExamQuestion(i)} aria-label={`Question ${i + 1}${a ? ", answered" : ""}${f ? ", flagged" : ""}`}
+                      style={{position:"relative", height:"34px", borderRadius:"8px", cursor:"pointer", fontSize:"12px", fontWeight:600, fontFamily:font, color:a ? T.cyan : T.textMute, background:a ? "rgba(34,211,238,0.14)" : "rgba(255,255,255,0.04)", border:cur ? `2px solid ${T.text}` : `1px solid ${a ? "rgba(34,211,238,0.5)" : "rgba(255,255,255,0.12)"}`, padding:0}}>
+                      {i + 1}
+                      {f && <span style={{position:"absolute", top:"-3px", right:"-3px", width:"9px", height:"9px", borderRadius:"50%", background:T.amber, border:`1px solid ${T.card}`}}/>}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{display:"flex", flexWrap:"wrap", gap:"10px", marginTop:"12px", fontSize:"11px", color:T.textMute}}>
+                <span><span style={{color:T.cyan}}>■</span> Answered ({answered})</span>
+                <span><span style={{color:T.textDim}}>■</span> Unanswered ({qs.length - answered})</span>
+                <span><span style={{color:T.amber}}>●</span> Flagged ({flagged})</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {modal && (
+          <div style={{position:"fixed", top:0, left:0, right:0, bottom:0, background:"rgba(0,0,0,0.7)", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center", padding:"16px"}}
+            onClick={() => setModal(null)}>
+            <div role="dialog" aria-modal="true" aria-label={modal === "quit" ? "Exit exam" : "Submit exam"} style={{background:T.card, border:`1px solid ${modal === "quit" ? "rgba(248,113,113,0.45)" : "rgba(52,211,153,0.45)"}`, borderRadius:"14px", padding:"20px 22px", maxWidth:"420px", width:"100%", boxSizing:"border-box"}}
+              onClick={e => e.stopPropagation()}>
+              <h3 style={{margin:"0 0 8px", fontSize:"17px", fontWeight:700, color:modal === "quit" ? T.red : T.green}}>
+                {modal === "quit" ? "Exit this exam?" : "Submit your exam?"}
+              </h3>
+              <p style={{margin:"0 0 16px", fontSize:"13px", color:T.textSub, lineHeight:"1.7"}}>
+                {modal === "quit"
+                  ? "Your progress in this attempt will be lost and no score will be saved."
+                  : `You have answered ${answered} of ${qs.length} questions.` +
+                    (qs.length - answered > 0 ? ` ${qs.length - answered} unanswered will count as incorrect.` : "") +
+                    (flagged > 0 ? ` ${flagged} question${flagged > 1 ? "s are" : " is"} still flagged for review.` : "")}
+              </p>
+              <div style={{display:"flex", gap:"8px", justifyContent:"flex-end", flexWrap:"wrap"}}>
+                <button autoFocus onClick={() => setModal(null)} style={sbtn("184,197,214", false)}>{modal === "quit" ? "Keep going" : "Keep working"}</button>
+                {modal === "quit"
+                  ? <button onClick={() => { setModal(null); setExam(null); }} style={sbtn("248,113,113", true)}>Exit exam</button>
+                  : <button onClick={() => finishExam(false)} style={sbtn("52,211,153", true)}>Submit exam</button>}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function renderExamResults() {
+    const ex = exam;
+    const r = ex.result;
+    const qs = ex.questions;
+    const lvl = readiness(r.pct);
+    const passed = r.pct >= PASS_MARK;
+    const topics = Object.values(r.perTopic)
+      .map(v => ({ ...v, pct:Math.round((v.c / v.t) * 100), title:topicTitle(v.p, v.i), doms:Object.keys(v.doms).map(Number).sort() }))
+      .sort((a, b) => a.pct - b.pct || b.t - a.t);
+    const weakT = topics.filter(t => t.pct < PASS_MARK);
+    const fairT = topics.filter(t => t.pct >= PASS_MARK && t.pct < 80);
+    const strongT = topics.filter(t => t.pct >= 80);
+    const domRows = DOMAIN_IDS.map(d => ({ d, ...r.perDomain[d], pct:r.perDomain[d].t ? Math.round((r.perDomain[d].c / r.perDomain[d].t) * 100) : null })).filter(x => x.t > 0);
+    const weakestDom = [...domRows].sort((a, b) => a.pct - b.pct)[0];
+    const mins = Math.floor(r.timeUsed / 60000);
+    const secs = Math.round((r.timeUsed % 60000) / 1000);
+    const CIRC = 2 * Math.PI * 58;
+    const items = qs.map((q, i) => ({ q, i, ok:isRightAnswer(q, ex.answers[i]), flagged:!!ex.flags[i] }));
+    const shown = items.filter(it => reviewFilter === "all" ? true : reviewFilter === "flagged" ? it.flagged : !it.ok);
+    const wrongCount = items.filter(it => !it.ok).length;
+    const flaggedCount = items.filter(it => it.flagged).length;
+    const pill = (key, label) => (
+      <button key={key} onClick={() => setReviewFilter(key)} aria-pressed={reviewFilter === key}
+        style={{background:reviewFilter === key ? "rgba(34,211,238,0.16)" : "transparent", border:`1px solid ${reviewFilter === key ? T.cyan : "rgba(255,255,255,0.12)"}`, color:reviewFilter === key ? T.cyan : T.textMute, padding:"5px 12px", borderRadius:"20px", cursor:"pointer", fontSize:"12px", fontWeight:600, fontFamily:font}}>
+        {label}
+      </button>
+    );
+    const act = (c, filled) => ({background:filled ? `rgba(${c},0.18)` : "transparent", border:`1px solid rgb(${c})`, color:`rgb(${c})`, padding:"9px 16px", borderRadius:"10px", cursor:"pointer", fontSize:"13px", fontWeight:600, fontFamily:font});
+    return (
+      <div style={{padding:"20px var(--saa-gutter)", width:"100%", boxSizing:"border-box"}}>
+        <button onClick={closeExam} style={backBtn}>← Back to Dashboard</button>
+
+        {/* Headline */}
+        <div style={{marginTop:"16px", background:`rgba(${lvl.rgb},0.07)`, border:`2px solid rgba(${lvl.rgb},0.35)`, borderRadius:"16px", padding:"20px", display:"flex", gap:"22px", alignItems:"center", flexWrap:"wrap"}}>
+          <div style={{position:"relative", width:"140px", height:"140px", flexShrink:0}}>
+            <svg width="140" height="140" viewBox="0 0 140 140" style={{transform:"rotate(-90deg)"}} aria-hidden="true">
+              <circle cx="70" cy="70" r="58" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="12"/>
+              <circle cx="70" cy="70" r="58" fill="none" stroke={lvl.color} strokeWidth="12" strokeLinecap="round" strokeDasharray={`${(r.pct / 100) * CIRC} ${CIRC}`}/>
+            </svg>
+            <div style={{position:"absolute", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center"}}>
+              <div style={{fontSize:"34px", fontWeight:700, color:lvl.color, lineHeight:1}}>{r.pct}%</div>
+              <div style={{fontSize:"10px", color:T.textMute, marginTop:"4px", letterSpacing:"1px"}}>PREPARED</div>
+            </div>
+          </div>
+          <div style={{flex:1, minWidth:"220px"}}>
+            <div style={{fontSize:"11px", color:T.textMute, letterSpacing:"1.5px", fontWeight:600}}>{EXAM_MODES[ex.mode].label.toUpperCase()} · RESULT</div>
+            <div style={{display:"flex", alignItems:"center", gap:"10px", flexWrap:"wrap", margin:"3px 0 6px"}}>
+              <div style={{fontSize:"22px", fontWeight:700, color:lvl.color}}>{lvl.label} {lvl.emoji}</div>
+              <span style={{background:passed ? "rgba(52,211,153,0.15)" : "rgba(248,113,113,0.15)", border:`1px solid ${passed ? T.green : T.red}`, color:passed ? T.green : T.red, fontSize:"11px", fontWeight:700, letterSpacing:"1px", padding:"3px 10px", borderRadius:"20px"}}>
+                {passed ? `ABOVE ${PASS_MARK}% PASS MARK` : `BELOW ${PASS_MARK}% PASS MARK`}
+              </span>
+            </div>
+            <p style={{margin:"0 0 8px", fontSize:"13px", color:T.textSub, lineHeight:"1.7"}}>{lvl.msg}</p>
+            <div style={{fontSize:"12px", color:T.textMute, lineHeight:"1.7"}}>
+              {r.correct} of {r.total} correct · {r.answered} answered · time used {mins}m {String(secs).padStart(2, "0")}s of {ex.minutes}m
+              {r.timedOut && <span style={{color:T.red}}> · time expired, unanswered questions counted as incorrect</span>}
+            </div>
+          </div>
+        </div>
+
+        {/* Domain breakdown */}
+        <div style={{marginTop:"18px", background:T.card, border:"1px solid rgba(255,255,255,0.08)", borderRadius:"14px", padding:"16px"}}>
+          <div style={{color:T.pink, fontSize:"11px", fontWeight:600, letterSpacing:"1px", marginBottom:"12px"}}>SCORE BY SAA-C03 DOMAIN</div>
+          <div style={{display:"flex", flexDirection:"column", gap:"14px"}}>
+            {domRows.map(row => {
+              const b = band(row.pct);
+              return (
+                <div key={row.d}>
+                  <div style={{display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:"10px", flexWrap:"wrap", marginBottom:"5px"}}>
+                    <div style={{display:"flex", alignItems:"center", gap:"8px", flexWrap:"wrap"}}>
+                      <span style={{fontSize:"13px", fontWeight:600, color:DOMAINS[row.d].color}}>D{row.d}</span>
+                      <span style={{fontSize:"13px", fontWeight:600}}>{DOMAINS[row.d].name}</span>
+                      <span style={{fontSize:"11px", color:T.textDim}}>exam weight {DOMAINS[row.d].weight}</span>
+                    </div>
+                    <div style={{fontSize:"12px", color:T.textMute}}>
+                      {row.c}/{row.t} · <span style={{color:b.color, fontWeight:700}}>{row.pct}% {b.label}</span>
+                    </div>
+                  </div>
+                  <div style={{position:"relative", height:"10px", background:"rgba(255,255,255,0.07)", borderRadius:"5px", overflow:"hidden"}}>
+                    <div style={{height:"100%", width:`${row.pct}%`, background:b.color, borderRadius:"5px"}}/>
+                    <div title={`${PASS_MARK}% pass mark`} style={{position:"absolute", top:0, bottom:0, left:`${PASS_MARK}%`, width:"2px", background:"rgba(255,255,255,0.45)"}}/>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{fontSize:"11px", color:T.textDim, marginTop:"12px"}}>
+            Strong 80%+ · Almost there {PASS_MARK}-79% · Weak below {PASS_MARK}%. The white tick marks the 720/1000 pass mark.
+          </div>
+        </div>
+
+        {/* Focus areas */}
+        <div style={{marginTop:"18px", background:T.card, border:`1px solid ${weakT.length ? "rgba(248,113,113,0.35)" : "rgba(52,211,153,0.35)"}`, borderRadius:"14px", padding:"16px"}}>
+          <div style={{color:weakT.length ? T.red : T.green, fontSize:"11px", fontWeight:600, letterSpacing:"1px", marginBottom:"8px"}}>
+            {weakT.length ? "🎯 WHERE TO CONCENTRATE" : "✅ NO WEAK AREAS FOUND"}
+          </div>
+          {weakT.length > 0 ? (
+            <>
+              <p style={{margin:"0 0 12px", fontSize:"13px", color:T.textSub, lineHeight:"1.7"}}>
+                Spend most of your study time on {weakT.slice(0, 3).map(t => t.title).join(", ")}
+                {weakT.length > 3 ? ` and ${weakT.length - 3} more` : ""}
+                {weakestDom ? `. Your weakest domain is D${weakestDom.d}, ${DOMAINS[weakestDom.d].name} (${weakestDom.pct}%).` : "."}
+              </p>
+              <div style={{display:"flex", flexDirection:"column"}}>
+                {weakT.map((t, i) => (
+                  <div key={t.key} style={{display:"flex", alignItems:"center", gap:"12px", padding:"10px 0", borderTop:i ? "1px solid rgba(255,255,255,0.06)" : "none", flexWrap:"wrap"}}>
+                    <div style={{flex:1, minWidth:"190px"}}>
+                      <div style={{display:"flex", alignItems:"center", gap:"8px", flexWrap:"wrap", marginBottom:"5px"}}>
+                        <span style={{fontSize:"13px", fontWeight:600, wordBreak:"break-word"}}>{t.title}</span>
+                        <span style={{fontSize:"10px", color:T.textDim}}>{PHASES[t.p].badge} lesson</span>
+                        {t.doms.map(d => <span key={d} style={{fontSize:"10px", color:DOMAINS[d].color, background:`rgba(${DOMAINS[d].rgb},0.12)`, padding:"1px 6px", borderRadius:"5px", fontWeight:600}}>D{d}</span>)}
+                      </div>
+                      <div style={{display:"flex", alignItems:"center", gap:"8px"}}>
+                        <div style={{flex:1, maxWidth:"220px", height:"6px", background:"rgba(255,255,255,0.07)", borderRadius:"3px", overflow:"hidden"}}>
+                          <div style={{height:"100%", width:`${t.pct}%`, background:T.red}}/>
+                        </div>
+                        <span style={{fontSize:"11px", color:T.red, fontWeight:700}}>{t.pct}%</span>
+                        <span style={{fontSize:"11px", color:T.textDim}}>{t.c}/{t.t} correct</span>
+                      </div>
+                    </div>
+                    <button onClick={() => studyTopic(t.p, t.i)} style={act("34,211,238", false)}>Study lesson →</button>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p style={{margin:0, fontSize:"13px", color:T.textSub, lineHeight:"1.7"}}>
+              Every lesson in this attempt scored {PASS_MARK}% or higher. {fairT.length ? "Polish the amber lessons below, then " : ""}Take another full mock exam to confirm your result across all domains.
+            </p>
+          )}
+          {(fairT.length > 0 || strongT.length > 0) && (
+            <div style={{marginTop:"14px", paddingTop:"12px", borderTop:"1px solid rgba(255,255,255,0.07)", display:"flex", flexDirection:"column", gap:"10px"}}>
+              {fairT.length > 0 && (
+                <div>
+                  <div style={{fontSize:"11px", color:T.amber, fontWeight:600, letterSpacing:"1px", marginBottom:"6px"}}>KEEP REVISING ({PASS_MARK}-79%)</div>
+                  <div style={{display:"flex", flexWrap:"wrap", gap:"6px"}}>
+                    {fairT.map(t => (
+                      <button key={t.key} onClick={() => studyTopic(t.p, t.i)}
+                        style={{background:"rgba(251,191,36,0.1)", border:"1px solid rgba(251,191,36,0.3)", color:T.amber, fontSize:"11px", padding:"4px 10px", borderRadius:"6px", cursor:"pointer", fontFamily:font}}>
+                        {t.title} · {t.pct}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {strongT.length > 0 && (
+                <div>
+                  <div style={{fontSize:"11px", color:T.green, fontWeight:600, letterSpacing:"1px", marginBottom:"6px"}}>STRONG (80%+)</div>
+                  <div style={{display:"flex", flexWrap:"wrap", gap:"6px"}}>
+                    {strongT.map(t => (
+                      <span key={t.key} style={{background:"rgba(52,211,153,0.1)", border:"1px solid rgba(52,211,153,0.3)", color:T.green, fontSize:"11px", padding:"4px 10px", borderRadius:"6px"}}>
+                        {t.title} · {t.pct}%
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          {r.total < 30 && (
+            <div style={{fontSize:"11px", color:T.textDim, marginTop:"12px"}}>
+              Short test: each lesson has only a few questions, so treat lesson scores as hints. The Full Mock Exam gives a more reliable picture.
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div style={{display:"flex", gap:"10px", flexWrap:"wrap", margin:"18px 0"}}>
+          {weakT.length > 0 && <button onClick={() => startExam("weak", r.weak)} style={act("248,113,113", true)}>🩺 Practise weak areas</button>}
+          <button onClick={() => startExam(ex.mode === "weak" ? "full" : ex.mode, r.weak)} style={act("52,211,153", true)}>🔁 Retake {ex.mode === "weak" ? "a full mock" : "this exam type"}</button>
+          <button onClick={() => setExam(null)} style={act("184,197,214", false)}>📋 Exam menu</button>
+        </div>
+
+        {/* Answer review */}
+        <div style={{background:T.card, border:"1px solid rgba(255,255,255,0.08)", borderRadius:"14px", padding:"16px"}}>
+          <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", gap:"10px", flexWrap:"wrap", marginBottom:"12px"}}>
+            <div style={{color:T.pink, fontSize:"11px", fontWeight:600, letterSpacing:"1px"}}>ANSWER REVIEW</div>
+            <div style={{display:"flex", gap:"6px", flexWrap:"wrap"}}>
+              {pill("wrong", `Incorrect (${wrongCount})`)}
+              {pill("flagged", `Flagged (${flaggedCount})`)}
+              {pill("all", `All (${qs.length})`)}
+            </div>
+          </div>
+          {shown.length === 0 && (
+            <div style={{textAlign:"center", color:T.textMute, fontSize:"13px", padding:"18px 0"}}>Nothing to show for this filter.</div>
+          )}
+          <div style={{display:"flex", flexDirection:"column", gap:"12px"}}>
+            {shown.map(({ q, i, ok }) => {
+              const chosenOpt = ex.answers[i];
+              return (
+                <div key={i} style={{border:`1px solid ${ok ? "rgba(52,211,153,0.35)" : "rgba(248,113,113,0.35)"}`, borderRadius:"12px", padding:"14px", background:"rgba(255,255,255,0.02)"}}>
+                  <div style={{display:"flex", gap:"8px", alignItems:"center", flexWrap:"wrap", marginBottom:"8px"}}>
+                    <span style={{fontSize:"11px", fontWeight:700, color:ok ? T.green : T.red}}>{ok ? "✓ Correct" : !hasAnswer(chosenOpt) ? "✗ Not answered" : "✗ Incorrect"}</span>
+                    {domBadge(q.d)}
+                    {q.multi && <span style={{fontSize:"10px", color:T.pink, fontWeight:700}}>CHOOSE {q.ans.length}</span>}
+                    <span style={{fontSize:"11px", color:T.textMute}}>{topicTitle(q.p, q.i)}</span>
+                    {ex.flags[i] && <span style={{fontSize:"11px", color:T.amber}}>⚑ flagged</span>}
+                  </div>
+                  <div style={{fontSize:"14px", fontWeight:600, lineHeight:"1.65", marginBottom:"10px", wordBreak:"break-word"}}>{i + 1}. {q.q}</div>
+                  <div style={{display:"flex", flexDirection:"column", gap:"5px"}}>
+                    {q.opts.map((opt, oi) => {
+                      const isRight = q.ans.includes(oi);
+                      const isMine = hasAnswer(chosenOpt) && chosenOpt.includes(oi);
+                      let bg = "rgba(255,255,255,0.03)", bc = "rgba(255,255,255,0.08)", tc = T.textSub;
+                      if (isRight) { bg = "rgba(52,211,153,0.12)"; bc = T.green; tc = "#D1FAE5"; }
+                      if (isMine && !isRight) { bg = "rgba(248,113,113,0.12)"; bc = T.red; tc = "#FEE2E2"; }
+                      return (
+                        <div key={oi} style={{display:"flex", gap:"8px", alignItems:"flex-start", padding:"7px 10px", borderRadius:"8px", background:bg, border:`1px solid ${bc}`}}>
+                          <span style={{fontSize:"11px", fontWeight:700, color:isRight ? T.green : isMine ? T.red : T.textDim, minWidth:"14px", marginTop:"2px"}}>{isRight ? "✓" : isMine ? "✗" : "·"}</span>
+                          <span style={{fontSize:"13px", color:tc, lineHeight:"1.55", wordBreak:"break-word"}}>
+                            {opt}{isMine && <span style={{color:T.textMute, fontSize:"11px"}}>  (your answer)</span>}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{marginTop:"10px", fontSize:"12px", color:T.textSub, lineHeight:"1.7", borderLeft:`3px solid ${DOMAINS[q.d].color}`, paddingLeft:"10px"}}>
+                    {q.explain}
+                    {!ok && (
+                      <button onClick={() => studyTopic(q.p, q.i)} style={{marginLeft:"8px", background:"transparent", border:"none", color:T.cyan, cursor:"pointer", fontSize:"12px", fontFamily:font, textDecoration:"underline"}}>
+                        Study this lesson →
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === "exam") {
+    return (
+      <>
+        <style>{POPPINS}{GLOBAL_CSS}</style>
+        <div id="saa-exam" style={{background:T.bg, fontFamily:font, color:T.text}}>
+          {!exam ? renderExamMenu() : exam.stage === "running" ? renderExamRunning() : renderExamResults()}
+        </div>
+      </>
+    );
+  }
+
+  if (activeScenario) {
+    const scen = SCENARIOS.find(s => s.id===activeScenario);
+    const scRGB = phaseRGB[scen.phase];
+    const scColor = PHASES.find(p => p.id===scen.phase).color;
+    const totalCmds = scen.steps.reduce((s,st) => s+st.cmds.length, 0);
+    const doneCmds = scen.steps.reduce((s,st,si) => s+(stepDone(scen.id,si) ? st.cmds.length : 0), 0);
+    const pct = Math.round((doneCmds/totalCmds)*100);
+    return (
+      <>
+        <style>{POPPINS}{GLOBAL_CSS}</style>
+        <div style={{background:T.bg, fontFamily:font, color:T.text}}>
+          <div className="saa-band" style={{background:`rgba(${scRGB},0.06)`, borderBottom:`1px solid rgba(${scRGB},0.25)`, padding:"16px var(--saa-gutter)"}}>
+            <button onClick={() => setActiveScenario(null)} style={{background:"transparent", border:`1px solid rgba(255,255,255,0.15)`, color:T.textSub, padding:"6px 14px", borderRadius:"8px", cursor:"pointer", fontSize:"13px", fontFamily:font, marginBottom:"12px"}}>← Back</button>
+            <div style={{display:"flex", alignItems:"flex-start", gap:"12px", flexWrap:"wrap"}}>
+              <div style={{fontSize:"36px", flexShrink:0}}>{scen.emoji}</div>
+              <div style={{flex:1, minWidth:0}}>
+                <div style={{display:"flex", gap:"6px", marginBottom:"6px", flexWrap:"wrap"}}>
+                  <span style={{background:`rgba(${scRGB},0.18)`, color:scColor, fontSize:"11px", fontWeight:700, letterSpacing:"1.5px", padding:"3px 10px", borderRadius:"20px"}}>{scen.difficulty.toUpperCase()}</span>
+                  <span style={{background:"rgba(255,255,255,0.07)", color:T.textMute, fontSize:"11px", padding:"3px 10px", borderRadius:"20px"}}>{scen.duration}</span>
+                  <span style={{background:"rgba(248,113,113,0.15)", color:T.red, fontSize:"11px", fontWeight:600, padding:"3px 10px", borderRadius:"20px"}}>SAA: {scen.examWeight}</span>
+                </div>
+                <h2 style={{margin:"0 0 4px", fontSize:"20px", fontWeight:700, color:T.text}}>{scen.title}</h2>
+                <p style={{margin:"0 0 8px", color:T.textSub, fontSize:"13px"}}>{scen.subtitle}</p>
+                <p style={{margin:0, color:T.textMute, fontSize:"13px", lineHeight:"1.7"}}><b style={{color:scColor}}>Goal: </b>{scen.goal}</p>
+              </div>
+              <div style={{background:`rgba(${scRGB},0.1)`, border:`1px solid rgba(${scRGB},0.3)`, borderRadius:"12px", padding:"12px 16px", textAlign:"center", flexShrink:0}}>
+                <div style={{fontSize:"26px", fontWeight:700, color:scColor, lineHeight:1}}>{pct}%</div>
+                <div style={{fontSize:"11px", color:T.textMute, marginTop:"3px"}}>DONE</div>
+                <div style={{fontSize:"11px", color:T.textDim, marginTop:"2px"}}>{doneCmds}/{totalCmds}</div>
+              </div>
+            </div>
+            <div style={{display:"flex", flexWrap:"wrap", gap:"5px", marginTop:"12px"}}>
+              {scen.concepts.map((c,i) => <span key={i} style={{background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", color:T.textSub, fontSize:"11px", padding:"3px 9px", borderRadius:"6px"}}>{c}</span>)}
+            </div>
+          </div>
+          <div className="saa-content" style={{padding:"20px var(--saa-gutter)", width:"100%", boxSizing:"border-box"}}>
+            {scen.steps.map((step,si) => {
+              const done = stepDone(scen.id,si);
+              return (
+                <div key={si} style={{marginBottom:"16px", display:"flex", gap:"12px"}}>
+                  <div style={{display:"flex", flexDirection:"column", alignItems:"center", flexShrink:0}}>
+                    <button aria-label={`Step ${si+1}: ${done ? "mark incomplete" : "mark done"}`} aria-pressed={done} onClick={() => toggleStep(scen.id,si)} style={{width:"36px", height:"36px", borderRadius:"50%", border:`2px solid ${done ? scColor : "rgba(255,255,255,0.15)"}`, background:done ? `rgba(${scRGB},0.2)` : "rgba(255,255,255,0.04)", color:done ? scColor : T.textMute, fontSize:"13px", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:font}}>{done ? "✓" : si+1}</button>
+                    {si<scen.steps.length-1 && <div style={{width:"2px", flex:1, background:done ? `rgba(${scRGB},0.35)` : "rgba(255,255,255,0.07)", marginTop:"6px", minHeight:"16px"}}/>}
+                  </div>
+                  <div style={{flex:1, minWidth:0}}>
+                    <div style={{background:done ? `rgba(${scRGB},0.05)` : T.card, border:`1px solid ${done ? `rgba(${scRGB},0.3)` : "rgba(255,255,255,0.08)"}`, borderRadius:"12px", overflow:"hidden"}}>
+                      <div style={{padding:"12px 16px", borderBottom:"1px solid rgba(255,255,255,0.07)"}}>
+                        <div style={{display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:"10px", flexWrap:"wrap"}}>
+                          <div style={{flex:1, minWidth:0}}>
+                            <span style={{fontSize:"10px", color:T.textDim, fontWeight:500, letterSpacing:"1px"}}>STEP {si+1}</span>
+                            <h3 style={{margin:"3px 0 0", fontSize:"15px", fontWeight:700, color:done ? scColor : T.text}}>{step.title}</h3>
+                          </div>
+                          <button onClick={() => toggleStep(scen.id,si)} style={{background:done ? `rgba(${scRGB},0.15)` : "rgba(255,255,255,0.05)", border:`1px solid ${done ? scColor : "rgba(255,255,255,0.12)"}`, color:done ? scColor : T.textMute, padding:"5px 12px", borderRadius:"8px", cursor:"pointer", fontSize:"12px", fontWeight:600, fontFamily:font, whiteSpace:"nowrap"}}>{done ? "✓ Done" : "Mark Done"}</button>
+                        </div>
+                        {step.context && <p style={{margin:"8px 0 0", fontSize:"13px", color:T.textSub, lineHeight:"1.7", background:"rgba(255,255,255,0.03)", borderLeft:`3px solid rgba(${scRGB},0.4)`, padding:"7px 10px", borderRadius:"0 6px 6px 0"}}>{step.context}</p>}
+                      </div>
+                      <div style={{padding:"12px 16px", display:"flex", flexDirection:"column", gap:"10px"}}>
+                        {step.cmds.map(({cmd,why},ci) => (
+                          <div key={ci} style={{background:"#060B14", border:"1px solid rgba(255,255,255,0.07)", borderRadius:"10px", overflow:"hidden"}}>
+                            <div style={{display:"flex", alignItems:"flex-start", justifyContent:"space-between", padding:"10px 12px", borderBottom:"1px solid rgba(255,255,255,0.05)", gap:"8px"}}>
+                              <pre style={{fontFamily:mono, fontSize:"12px", color:T.green, flex:1, margin:0, whiteSpace:"pre-wrap", wordBreak:"break-all", lineHeight:"1.6"}}><span style={{color:T.textDim, userSelect:"none"}}>$ </span>{cmd}</pre>
+                              <button onClick={(e) => {e.stopPropagation(); copyCmd(cmd);}} style={{background:copiedCmd===cmd ? `rgba(${scRGB},0.2)` : "rgba(255,255,255,0.06)", border:`1px solid ${copiedCmd===cmd ? scColor : "rgba(255,255,255,0.1)"}`, color:copiedCmd===cmd ? scColor : T.textMute, padding:"3px 9px", borderRadius:"6px", cursor:"pointer", fontSize:"11px", fontWeight:600, fontFamily:font, flexShrink:0, whiteSpace:"nowrap"}}>{copiedCmd===cmd ? "✓" : "Copy"}</button>
+                            </div>
+                            <div style={{padding:"9px 12px", display:"flex", gap:"8px", alignItems:"flex-start"}}>
+                              <span style={{color:scColor, fontSize:"11px", fontWeight:700, flexShrink:0, marginTop:"2px"}}>WHY</span>
+                              <span style={{fontSize:"12px", color:T.textSub, lineHeight:"1.75", wordBreak:"break-word"}}>{why}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {scenarioDone(scen) && (
+              <div style={{background:`rgba(${scRGB},0.1)`, border:`2px solid rgba(${scRGB},0.4)`, borderRadius:"14px", padding:"20px", textAlign:"center"}}>
+                <div style={{fontSize:"36px", marginBottom:"8px"}}>🎉</div>
+                <div style={{fontSize:"18px", fontWeight:700, color:scColor, marginBottom:"5px"}}>Scenario Complete!</div>
+                <div style={{color:T.textSub, fontSize:"13px", marginBottom:"14px"}}>You ran all {totalCmds} commands. Solid architect practice. Remember to delete what you created.</div>
+                <button onClick={() => setActiveScenario(null)} style={{background:`rgba(${scRGB},0.2)`, border:`1px solid ${scColor}`, color:scColor, padding:"9px 22px", borderRadius:"10px", cursor:"pointer", fontSize:"14px", fontWeight:600, fontFamily:font}}>Back to All Scenarios</button>
+              </div>
+            )}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  const activeCSTData = CHEATSHEET_TABS.find(t => t.id===activeCheatTab);
+
+  return (
+    <>
+      <style>{POPPINS}{GLOBAL_CSS}</style>
+      <div style={{background:T.bg, fontFamily:font, color:T.text}}>
+
+        {/* Glossary Modal */}
+        {glossaryWord && (
+          <div style={{position:"fixed", top:0, left:0, right:0, bottom:0, background:"rgba(0,0,0,0.65)", zIndex:999, display:"flex", alignItems:"flex-start", justifyContent:"center", padding:"60px 16px 16px"}} onClick={() => setGlossaryWord(null)}>
+            <div role="dialog" aria-modal="true" aria-label={`Glossary: ${glossaryWord}`} style={{background:T.card, border:`1px solid rgba(${rgb},0.4)`, borderRadius:"14px", padding:"20px 24px", maxWidth:"520px", width:"100%", maxHeight:"calc(100dvh - 100px)", overflowY:"auto", boxSizing:"border-box"}} onClick={e => e.stopPropagation()}>
+              <div style={{display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"12px"}}>
+                <div>
+                  <span style={{fontSize:"10px", color:T.textDim, letterSpacing:"1.5px"}}>GLOSSARY</span>
+                  <h3 style={{margin:"3px 0 0", fontSize:"18px", fontWeight:700, color}}>{glossaryWord}</h3>
+                </div>
+                <button autoFocus aria-label="Close glossary" title="Close glossary" onClick={() => setGlossaryWord(null)} style={{background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)", color:T.textMute, width:"30px", height:"30px", flexShrink:0, borderRadius:"50%", cursor:"pointer", fontSize:"14px", fontFamily:font}}>✕</button>
+              </div>
+              <p style={{margin:0, fontSize:"14px", color:T.textSub, lineHeight:"1.8", wordBreak:"break-word"}}>{GLOSSARY[glossaryWord]||"Definition not found."}</p>
+            </div>
+          </div>
+        )}
+
+        {/* ── HEADER ── */}
+        <div className="saa-band" style={{borderBottom:`1px solid rgba(${rgb},0.2)`, padding:"20px var(--saa-gutter) 16px", background:`rgba(${rgb},0.04)`}}>
+          <div className="saa-summary-layout" style={{display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexWrap:"wrap", gap:"12px"}}>
+            <div style={{flex:1, minWidth:0}}>
+              <div style={{display:"flex", alignItems:"center", gap:"8px", marginBottom:"5px"}}>
+                <span style={{background:`rgba(${rgb},0.18)`, border:`1px solid rgba(${rgb},0.4)`, color, fontSize:"10px", fontWeight:600, letterSpacing:"1.5px", padding:"3px 10px", borderRadius:"20px"}}>SAA-C03 PREP · 12 WEEKS</span>
+              </div>
+              <h1 style={{fontSize:"28px", fontWeight:700, margin:"0 0 3px", color:T.text, lineHeight:1.2}}>AWS Solutions Architect: <span style={{color}}>Zero → Certified</span></h1>
+              <p style={{color:T.textSub, fontSize:"13px", margin:0}}>12 Weeks · 3 Levels · {PHASES.reduce((s,p) => s+p.topics.length, 0)} Topics · {PHASES.reduce((s,p) => s+p.labs.length, 0)} Labs · {SCENARIOS.length} Scenarios · {PHASES.reduce((s,p) => s+p.assessment.questions.length, 0)} MCQs · {QUESTION_BANK.length} Mock Exam Questions</p>
+            </div>
+            <div style={{display:"flex", gap:"8px", alignItems:"flex-start", flexWrap:"wrap"}}>
+              <div style={{background:`rgba(${rgb},0.1)`, border:`1px solid rgba(${rgb},0.3)`, borderRadius:"12px", padding:"10px 16px", textAlign:"center"}}>
+                <div style={{fontSize:"24px", fontWeight:700, color, lineHeight:1}}>{totalPct()}%</div>
+                <div style={{fontSize:"10px", color:T.textMute, marginTop:"3px"}}>OVERALL</div>
+              </div>
+              <div style={{display:"flex", flexDirection:"column", gap:"6px"}}>
+                <button onClick={openExam} style={{background:"rgba(52,211,153,0.16)", border:`1px solid ${T.green}`, color:T.green, padding:"6px 12px", borderRadius:"8px", cursor:"pointer", fontSize:"12px", fontWeight:700, fontFamily:font, boxShadow:"0 0 14px rgba(52,211,153,0.2)"}}>
+                  {exam && exam.stage === "running" ? "▶ Resume Exam" : "📝 Mock Exam"}
+                </button>
+                <button onClick={() => {setShowCheatsheet(p=>!p); setShowLinks(false);}} style={{background:showCheatsheet ? `rgba(167,139,250,0.18)` : "transparent", border:`1px solid ${T.violet}`, color:T.violet, padding:"6px 12px", borderRadius:"8px", cursor:"pointer", fontSize:"12px", fontWeight:600, fontFamily:font}}>
+                  {showCheatsheet ? "▲ Cheatsheet" : "▼ Cheatsheet"}
+                </button>
+                <button onClick={() => {setShowLinks(p=>!p); setShowCheatsheet(false);}} style={{background:showLinks ? `rgba(251,191,36,0.18)` : "transparent", border:`1px solid ${T.amber}`, color:T.amber, padding:"6px 12px", borderRadius:"8px", cursor:"pointer", fontSize:"12px", fontWeight:600, fontFamily:font}}>
+                  {showLinks ? "▲ SAA Links" : "▼ SAA Links"}
+                </button>
+              </div>
+            </div>
+          </div>
+          <div style={{display:"flex", gap:"8px", marginTop:"16px", flexWrap:"wrap"}}>
+            {PHASES.map((p,i) => {
+              const pRGB=phaseRGB[p.id]; const active=activePhase===i;
+              return (
+                <button key={p.id} onClick={() => {setActivePhase(i); setActiveTab("topics"); setExpandedTopic(null); setOpenSolution(null);}}
+                  style={{background:active ? `rgba(${pRGB},0.16)` : "rgba(255,255,255,0.04)", border:`2px solid ${active ? p.color : "rgba(255,255,255,0.1)"}`, color:active ? p.color : T.textMute, padding:"8px 16px", borderRadius:"10px", cursor:"pointer", fontSize:"12px", fontWeight:600, fontFamily:font, boxShadow:active ? `0 0 16px rgba(${pRGB},0.2)` : "none", display:"flex", alignItems:"center", gap:"6px"}}>
+                  <span style={{fontSize:"16px"}}>{p.icon}</span>
+                  <span>{p.badge} · {p.level}</span>
+                  <span style={{fontSize:"10px", opacity:.55, fontWeight:400}}>{p.duration}</span>
+                  {mcqChecked[p.id] && <span style={{background:`rgba(${pRGB},0.2)`, color:T.green, fontSize:"10px", fontWeight:700, padding:"2px 6px", borderRadius:"6px"}}>✓ {quizScore(p.id).pct}%</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Cheatsheet Panel */}
+        {showCheatsheet && (
+          <div className="saa-band" style={{background:`rgba(167,139,250,0.05)`, borderBottom:`1px solid rgba(167,139,250,0.2)`, padding:"0 var(--saa-gutter)"}}>
+            <div style={{display:"flex", overflowX:"auto", borderBottom:"1px solid rgba(167,139,250,0.15)"}}>
+              {CHEATSHEET_TABS.map(t => (
+                <button key={t.id} onClick={() => setActiveCheatTab(t.id)}
+                  style={{background:"transparent", border:"none", borderBottom:activeCheatTab===t.id ? `3px solid ${T.violet}` : "3px solid transparent", color:activeCheatTab===t.id ? T.violet : T.textDim, padding:"10px 14px", cursor:"pointer", fontSize:"11px", fontWeight:activeCheatTab===t.id ? 700 : 400, fontFamily:font, whiteSpace:"nowrap", letterSpacing:"0.5px"}}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            {activeCSTData && (
+              <div style={{padding:"14px 0 16px"}}>
+                <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,220px),1fr))", gap:"10px"}}>
+                  {activeCSTData.cats.map(cat => (
+                    <div key={cat.cat} style={{background:"rgba(255,255,255,0.03)", border:"1px solid rgba(167,139,250,0.12)", borderRadius:"10px", padding:"12px"}}>
+                      <div style={{color:T.violet, fontSize:"11px", letterSpacing:"1px", fontWeight:700, marginBottom:"8px"}}>{cat.cat}</div>
+                      {cat.cmds.map((item,i) => (
+                        <div key={i} style={{borderBottom:i<cat.cmds.length-1 ? "1px solid rgba(255,255,255,0.05)" : "none", padding:"5px 0"}}>
+                          <div style={{fontFamily:mono, fontSize:"10px", color:T.green, wordBreak:"break-all", marginBottom:"2px"}}>$ {item.cmd}</div>
+                          <div style={{fontSize:"11px", color:T.textDim, lineHeight:"1.5"}}>{item.desc}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+                <div style={{marginTop:"12px", paddingTop:"10px", borderTop:"1px solid rgba(167,139,250,0.12)", display:"flex", justifyContent:"flex-end"}}>
+                  <a href="https://awscli.amazonaws.com/v2/documentation/api/latest/reference/index.html" target="_blank" rel="noopener noreferrer"
+                    style={{display:"inline-flex", alignItems:"center", gap:"6px", fontSize:"12px", color:T.violet, textDecoration:"none", fontWeight:600, background:"rgba(167,139,250,0.1)", border:"1px solid rgba(167,139,250,0.3)", padding:"5px 14px", borderRadius:"8px"}}>
+                    ↗ AWS CLI Command Reference
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* SAA Links */}
+        {showLinks && (
+          <div className="saa-band" style={{background:`rgba(251,191,36,0.04)`, borderBottom:`1px solid rgba(251,191,36,0.18)`, padding:"16px var(--saa-gutter)"}}>
+            <p style={{color:T.amber, fontSize:"11px", letterSpacing:"1.5px", margin:"0 0 12px", fontWeight:600}}>// SAA-C03 STUDY RESOURCES</p>
+            <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))", gap:"10px"}}>
+              {EXAM_LINKS.map(cat => (
+                <div key={cat.cat} style={{background:"rgba(255,255,255,0.04)", border:"1px solid rgba(251,191,36,0.15)", borderRadius:"10px", padding:"12px"}}>
+                  <div style={{color:T.amber, fontSize:"11px", letterSpacing:"1px", fontWeight:600, marginBottom:"8px"}}>{cat.cat}</div>
+                  {cat.links.map((l,i) => (
+                    <a key={i} href={l.url} target="_blank" rel="noopener noreferrer"
+                      style={{display:"block", fontSize:"12px", color:T.textSub, padding:"4px 0", borderBottom:i<cat.links.length-1 ? "1px solid rgba(255,255,255,0.06)" : "none", textDecoration:"none", lineHeight:"1.5"}}>
+                      <span style={{color:T.amber, marginRight:"4px"}}>↗</span>{l.title}
+                    </a>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Main Content */}
+        <div className="saa-content" style={{padding:"20px var(--saa-gutter)", boxSizing:"border-box"}}>
+          <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"16px", flexWrap:"wrap", gap:"10px"}}>
+            <div style={{display:"flex", alignItems:"center", gap:"12px"}}>
+              <div style={{width:"44px", height:"44px", borderRadius:"12px", background:`rgba(${rgb},0.15)`, border:`2px solid rgba(${rgb},0.4)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"22px", flexShrink:0}}>{phase.icon}</div>
+              <div>
+                <div style={{color, fontSize:"11px", fontWeight:600, letterSpacing:"1.5px"}}>{phase.level} · {phase.duration} · {phase.topics.length} Topics</div>
+                <h2 style={{margin:"2px 0 0", fontSize:"18px", fontWeight:700, color:T.text}}>{phase.title}</h2>
+                <div style={{color:T.textSub, fontSize:"13px"}}>{phase.subtitle}</div>
+              </div>
+            </div>
+            {mcqChecked[phaseId] && (
+              <div style={{background:`rgba(${rgb},0.1)`, border:`1px solid rgba(${rgb},0.3)`, borderRadius:"12px", padding:"10px 16px", textAlign:"center"}}>
+                <div style={{fontSize:"22px", fontWeight:700, color, lineHeight:1}}>{quizScore(phaseId).pct}%</div>
+                <div style={{fontSize:"10px", color:T.textMute, marginTop:"2px"}}>{quizScore(phaseId).correct}/{quizScore(phaseId).total} CORRECT</div>
+              </div>
+            )}
+          </div>
+
+          {/* Tabs */}
+          <div style={{display:"flex", gap:"2px", borderBottom:"2px solid rgba(255,255,255,0.07)", marginBottom:"18px", overflowX:"auto"}}>
+            {["topics","labs","scenarios","assessment"].map(tab => (
+              <button key={tab} onClick={() => setActiveTab(tab)}
+                style={{background:"transparent", border:"none", borderBottom:activeTab===tab ? `3px solid ${color}` : "3px solid transparent", color:activeTab===tab ? color : T.textMute, padding:"8px 16px", cursor:"pointer", fontSize:"12px", fontWeight:activeTab===tab ? 600 : 400, fontFamily:font, textTransform:"uppercase", letterSpacing:"1px", marginBottom:"-2px", whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:"5px"}}>
+                {tab}
+                {tab==="scenarios" && <span style={{background:`rgba(${rgb},0.2)`, color, fontSize:"10px", fontWeight:700, padding:"1px 5px", borderRadius:"10px"}}>{phaseScenarios.length}</span>}
+                {tab==="labs" && <span style={{background:`rgba(${rgb},0.2)`, color, fontSize:"10px", fontWeight:700, padding:"1px 5px", borderRadius:"10px"}}>{phase.labs.length}</span>}
+                {tab==="assessment" && <span style={{background:`rgba(${rgb},0.2)`, color, fontSize:"10px", fontWeight:700, padding:"1px 5px", borderRadius:"10px"}}>{phase.assessment.questions.length}</span>}
+              </button>
+            ))}
+          </div>
+
+          {/* TOPICS */}
+          {activeTab==="topics" && (
+            <div style={{display:"flex", flexDirection:"column", gap:"8px"}}>
+              <p style={{margin:"0 0 10px", fontSize:"12px", color:T.textMute, lineHeight:"1.6"}}>
+                Click <span style={{color, textDecoration:"underline dotted", fontWeight:600}}>underlined keywords</span> to expand their definition from the glossary.
+              </p>
+              {phase.topics.map((topic,ti) => {
+                const isOpen = expandedTopic===ti;
+                return (
+                  <div key={ti} style={{border:`1px solid ${isOpen ? color+"60" : "rgba(255,255,255,0.08)"}`, borderRadius:"12px", overflow:"hidden", background:isOpen ? `rgba(${rgb},0.05)` : "rgba(255,255,255,0.02)"}}>
+                    <button onClick={() => setExpandedTopic(isOpen ? null : ti)}
+                      style={{width:"100%", background:"transparent", border:"none", padding:"14px 16px", cursor:"pointer", textAlign:"left", display:"flex", justifyContent:"space-between", alignItems:"center", fontFamily:font, gap:"10px"}}>
+                      <div style={{display:"flex", alignItems:"center", gap:"12px", flex:1, minWidth:0}}>
+                        <span style={{background:isOpen ? color : `rgba(${rgb},0.2)`, color:isOpen ? "#000" : color, width:"28px", height:"28px", borderRadius:"7px", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"12px", fontWeight:700, flexShrink:0}}>{ti+1}</span>
+                        <span style={{fontSize:"15px", fontWeight:600, color:T.text}}>{topic.title}</span>
+                      </div>
+                      <span style={{color, fontSize:"16px", transform:isOpen ? "rotate(90deg)" : "none", flexShrink:0}}>▶</span>
+                    </button>
+                    {isOpen && (
+                      <div style={{padding:"0 16px 16px"}}>
+                        <div style={{background:T.surface, border:`1px solid rgba(${rgb},0.25)`, borderLeft:`4px solid ${color}`, borderRadius:"0 10px 10px 0", padding:"14px 16px", marginBottom:"14px"}}>
+                          <span style={{background:`rgba(${rgb},0.18)`, color, fontSize:"10px", fontWeight:700, letterSpacing:"1.5px", padding:"3px 9px", borderRadius:"20px", display:"inline-block", marginBottom:"10px"}}>📖 LESSON</span>
+                          {renderExpl(topic.explanation, topic.keywords)}
+                        </div>
+                        <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,260px),1fr))", gap:"14px"}}>
+                          <div>
+                            <div style={{color:T.pink, fontSize:"11px", fontWeight:600, letterSpacing:"1px", marginBottom:"10px"}}>WHAT YOU'LL LEARN</div>
+                            {topic.subtopics.map((s,si) => (
+                              <div key={si} style={{display:"flex", gap:"8px", alignItems:"flex-start", marginBottom:"7px"}}>
+                                <span style={{color, marginTop:"4px", flexShrink:0}}>›</span>
+                                <span style={{fontSize:"13px", color:T.textSub, lineHeight:"1.6"}}>{s}</span>
+                              </div>
+                            ))}
+                            {topic.resources && (
+                              <div style={{marginTop:"14px"}}>
+                                <div style={{color:T.amber, fontSize:"11px", fontWeight:600, letterSpacing:"1px", marginBottom:"8px"}}>📚 FURTHER READING</div>
+                                {topic.resources.map((r,ri) => (
+                                  <a key={ri} href={r.url} target="_blank" rel="noopener noreferrer"
+                                    style={{display:"flex", alignItems:"flex-start", gap:"6px", fontSize:"12px", color:T.textSub, marginBottom:"5px", textDecoration:"none", lineHeight:"1.5"}}>
+                                    <span style={{color:T.amber, flexShrink:0, marginTop:"1px"}}>↗</span>
+                                    <span style={{borderBottom:`1px solid rgba(251,191,36,0.3)`}}>{r.title}</span>
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <div style={{color:T.green, fontSize:"11px", fontWeight:600, letterSpacing:"1px", marginBottom:"10px"}}>KEY COMMANDS</div>
+                            <div style={{background:"#060B14", border:"1px solid rgba(255,255,255,0.07)", borderRadius:"10px", overflow:"hidden"}}>
+                              {topic.commands.map(({cmd,desc},ci) => (
+                                <div key={ci} style={{padding:"10px 12px", borderBottom:ci<topic.commands.length-1 ? "1px solid rgba(255,255,255,0.06)" : "none"}}>
+                                  <div style={{fontFamily:mono, fontSize:"11px", color:T.green, marginBottom:"4px", wordBreak:"break-all"}}><span style={{color:T.textDim}}>$ </span>{cmd}</div>
+                                  <div style={{fontSize:"12px", color:T.textSub, lineHeight:"1.6", paddingLeft:"12px", borderLeft:`2px solid rgba(${rgb},0.35)`}}>{desc}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* LABS */}
+          {activeTab==="labs" && (
+            <div style={{display:"flex", flexDirection:"column", gap:"10px"}}>
+              {phase.labs.map((lab,li) => {
+                const dc=diffColor(lab.difficulty);
+                const isOpen=openSolution===li;
+                return (
+                  <div key={li} style={{background:T.card, border:"1px solid rgba(255,255,255,0.08)", borderRadius:"12px", overflow:"hidden"}}>
+                    <div style={{height:"3px", background:dc}}/>
+                    <div style={{padding:"16px"}}>
+                      <div style={{display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:"12px", flexWrap:"wrap"}}>
+                        <div style={{flex:1, minWidth:0}}>
+                          <div style={{display:"flex", alignItems:"center", gap:"8px", marginBottom:"7px", flexWrap:"wrap"}}>
+                            <span style={{fontSize:"11px", color:T.textDim, fontWeight:500}}>LAB {li+1+(activePhase===0 ? 0 : activePhase===1 ? 5 : 10)}</span>
+                            <span style={{fontSize:"11px", fontWeight:600, padding:"2px 9px", borderRadius:"20px", color:dc, background:`${dc}1A`}}>{lab.difficulty.toUpperCase()}</span>
+                          </div>
+                          <div style={{fontSize:"15px", fontWeight:700, color, marginBottom:"6px"}}>{lab.title}</div>
+                          <div style={{fontSize:"13px", color:T.textSub, lineHeight:"1.75"}}>{lab.desc}</div>
+                        </div>
+                        <button onClick={() => setOpenSolution(isOpen ? null : li)} style={{background:isOpen ? `rgba(${rgb},0.18)` : "rgba(255,255,255,0.06)", border:`1px solid ${isOpen ? color : "rgba(255,255,255,0.12)"}`, color:isOpen ? color : T.textSub, padding:"7px 14px", borderRadius:"8px", cursor:"pointer", fontSize:"12px", fontWeight:600, fontFamily:font, flexShrink:0}}>
+                          {isOpen ? "▲ Hide" : "▼ Solution"}
+                        </button>
+                      </div>
+                      {isOpen && (
+                        <div style={{marginTop:"12px", background:"#060B14", border:`1px solid rgba(${rgb},0.25)`, borderLeft:`4px solid ${color}`, borderRadius:"0 10px 10px 0", padding:"14px 16px"}}>
+                          <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"10px"}}>
+                            <div style={{color, fontSize:"11px", fontWeight:700, letterSpacing:"1px"}}>💡 SOLUTION</div>
+                            <button onClick={(e) => {e.stopPropagation(); copyCmd(lab.solution);}} style={{background:copiedCmd===lab.solution ? `rgba(${rgb},0.2)` : "rgba(255,255,255,0.06)", border:`1px solid ${copiedCmd===lab.solution ? color : "rgba(255,255,255,0.1)"}`, color:copiedCmd===lab.solution ? color : T.textMute, padding:"3px 10px", borderRadius:"6px", cursor:"pointer", fontSize:"11px", fontWeight:600, fontFamily:font}}>
+                              {copiedCmd===lab.solution ? "✓ Copied" : "Copy"}
+                            </button>
+                          </div>
+                          <pre style={{margin:0, fontFamily:mono, fontSize:"11px", color:T.green, lineHeight:"1.8", whiteSpace:"pre-wrap", wordBreak:"break-all"}}>{lab.solution}</pre>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              <div style={{background:`rgba(${rgb},0.06)`, border:`2px dashed rgba(${rgb},0.25)`, borderRadius:"12px", padding:"16px", textAlign:"center"}}>
+                <div style={{fontSize:"22px", marginBottom:"7px"}}>🔧</div>
+                <div style={{color, fontSize:"13px", fontWeight:600, marginBottom:"8px"}}>Free Practice Platforms</div>
+                {[
+                  {label:"AWS Free Tier — practise at little or no cost",url:"https://aws.amazon.com/free/"},
+                  {label:"AWS CloudShell — browser terminal with the CLI preinstalled",url:"https://aws.amazon.com/cloudshell/"},
+                  {label:"AWS Workshops — free guided labs",url:"https://workshops.aws/"},
+                  {label:"AWS Skill Builder — labs, Cloud Quest and official practice",url:"https://skillbuilder.aws/"},
+                ].map((p,i) => (
+                  <a key={i} href={p.url} target="_blank" rel="noopener noreferrer" style={{display:"block", fontSize:"13px", color:T.textSub, marginBottom:"4px", textDecoration:"none"}}>
+                    <span style={{color}}>↗ </span>{p.label}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* SCENARIOS */}
+          {activeTab==="scenarios" && (
+            <div>
+              <p style={{color:T.textSub, fontSize:"13px", marginTop:0, marginBottom:"16px", lineHeight:"1.7"}}>
+                Each scenario builds a real architecture, like the ones described in SAA-C03 questions. Every command has a WHY explanation. Mark steps done as you go. Use a sandbox account, check the Free Tier, and delete resources afterwards to avoid charges.
+              </p>
+              <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,270px),1fr))", gap:"12px"}}>
+                {phaseScenarios.map(scen => {
+                  const done=scenarioDone(scen);
+                  const scRGB=phaseRGB[scen.phase];
+                  const scColor=PHASES.find(p => p.id===scen.phase).color;
+                  const totalCmds=scen.steps.reduce((s,st) => s+st.cmds.length, 0);
+                  const doneCmds=scen.steps.reduce((s,st,si) => s+(stepDone(scen.id,si) ? st.cmds.length : 0), 0);
+                  const pct=Math.round((doneCmds/totalCmds)*100);
+                  const dc=scen.difficulty==="Beginner" ? T.green : scen.difficulty==="Intermediate" ? T.amber : T.red;
+                  return (
+                    <div key={scen.id} role="button" tabIndex={0} aria-label={`Open scenario: ${scen.title}`} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") {e.preventDefault(); setActiveScenario(scen.id);} }} style={{background:T.card, border:`1px solid ${done ? `rgba(${scRGB},0.4)` : "rgba(255,255,255,0.08)"}`, borderRadius:"14px", overflow:"hidden", cursor:"pointer"}} onClick={() => setActiveScenario(scen.id)}>
+                      <div style={{height:"3px", background:done ? scColor : `linear-gradient(90deg,${scColor} ${pct}%,rgba(255,255,255,0.08) ${pct}%)`}}/>
+                      <div style={{padding:"14px"}}>
+                        <div style={{display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"8px"}}>
+                          <div style={{fontSize:"26px"}}>{scen.emoji}</div>
+                          <div style={{textAlign:"right"}}>
+                            <div style={{fontSize:"16px", fontWeight:700, color:pct===0 ? T.textMute : scColor, lineHeight:1}}>{pct}%</div>
+                            <div style={{fontSize:"10px", color:T.textDim, marginTop:"2px"}}>{doneCmds}/{totalCmds}</div>
+                          </div>
+                        </div>
+                        <div style={{display:"flex", gap:"4px", marginBottom:"6px", flexWrap:"wrap"}}>
+                          <span style={{fontSize:"10px", fontWeight:600, color:dc, background:`${dc}1A`, padding:"2px 7px", borderRadius:"5px"}}>{scen.difficulty}</span>
+                          <span style={{fontSize:"10px", color:T.textDim, background:"rgba(255,255,255,0.05)", padding:"2px 7px", borderRadius:"5px"}}>{scen.duration}</span>
+                          <span style={{fontSize:"10px", color:scen.examWeight==="Critical" ? T.red : T.amber, background:scen.examWeight==="Critical" ? "rgba(248,113,113,0.12)" : "rgba(251,191,36,0.12)", padding:"2px 7px", borderRadius:"5px", fontWeight:600}}>SAA: {scen.examWeight}</span>
+                        </div>
+                        <h3 style={{margin:"0 0 2px", fontSize:"13px", fontWeight:700, color:T.text}}>{scen.title}</h3>
+                        <p style={{margin:"0 0 8px", fontSize:"11px", color:T.textSub, lineHeight:"1.4"}}>{scen.subtitle}</p>
+                        <div style={{display:"flex", flexWrap:"wrap", gap:"3px", marginBottom:"10px"}}>
+                          {scen.concepts.slice(0,3).map((c,i) => <span key={i} style={{fontSize:"10px", color:T.textDim, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", padding:"2px 6px", borderRadius:"4px"}}>{c}</span>)}
+                          {scen.concepts.length>3 && <span style={{fontSize:"10px", color:T.textDim}}>+{scen.concepts.length-3}</span>}
+                        </div>
+                        <div style={{background:`rgba(${scRGB},0.12)`, border:`1px solid rgba(${scRGB},0.3)`, borderRadius:"8px", padding:"6px 12px", color:scColor, fontSize:"12px", fontWeight:600, textAlign:"center"}}>
+                          {done ? "✓ Completed — Review" : "▶ Start Scenario"}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ASSESSMENT */}
+          {activeTab==="assessment" && (
+            <div>
+              {mcqChecked[phaseId] && (() => {
+                const s=quizScore(phaseId);
+                const grade=s.pct>=85 ? {label:"Champion! 🏆",c:T.green} : s.pct>=60 ? {label:"Good — Review Misses 📖",c:T.amber} : {label:"Needs More Practice 🔁",c:T.red};
+                return (
+                  <div style={{background:`rgba(${rgb},0.08)`, border:`2px solid rgba(${rgb},0.3)`, borderRadius:"14px", padding:"16px 20px", marginBottom:"16px", display:"flex", alignItems:"center", gap:"20px", flexWrap:"wrap"}}>
+                    <div style={{textAlign:"center", minWidth:"70px"}}>
+                      <div style={{fontSize:"36px", fontWeight:700, color, lineHeight:1}}>{s.pct}%</div>
+                      <div style={{fontSize:"11px", color:T.textMute, marginTop:"3px"}}>{s.correct} / {s.total}</div>
+                    </div>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:"16px", fontWeight:700, color:grade.c}}>{grade.label}</div>
+                      <div style={{fontSize:"13px", color:T.textSub, marginTop:"3px"}}>Explanations shown below each question</div>
+                    </div>
+                    <button onClick={retryQuiz} style={{background:"transparent", border:"1px solid rgba(255,255,255,0.2)", color:T.textSub, padding:"7px 16px", borderRadius:"8px", cursor:"pointer", fontSize:"12px", fontWeight:600, fontFamily:font}}>Retry</button>
+                  </div>
+                );
+              })()}
+              <div style={{display:"flex", flexDirection:"column", gap:"12px"}}>
+                {phase.assessment.questions.map((q,qi) => {
+                  const chosen=mcqAnswers[`${phaseId}-${qi}`];
+                  const checked=mcqChecked[phaseId];
+                  const isRight=chosen===q.answer;
+                  return (
+                    <div key={qi} style={{background:T.card, border:`1px solid ${checked ? (isRight ? "rgba(52,211,153,0.4)" : "rgba(248,113,113,0.4)") : "rgba(255,255,255,0.08)"}`, borderRadius:"12px", padding:"16px"}}>
+                      <div style={{display:"flex", gap:"10px", marginBottom:"12px"}}>
+                        <span style={{background:`rgba(${rgb},0.22)`, color, width:"26px", height:"26px", borderRadius:"7px", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"11px", fontWeight:700, flexShrink:0, marginTop:"1px"}}>Q{qi+1}</span>
+                        <span style={{fontSize:"14px", color:T.text, lineHeight:"1.65", fontWeight:600}}>{q.q}</span>
+                      </div>
+                      <div style={{display:"flex", flexDirection:"column", gap:"6px", paddingLeft:"36px"}}>
+                        {q.options.map((opt,oi) => {
+                          const selected=chosen===oi; const isCorrect=oi===q.answer;
+                          let bg="rgba(255,255,255,0.03)", bc="rgba(255,255,255,0.1)", tc=T.textSub;
+                          if (!checked&&selected) {bg=`rgba(${rgb},0.14)`;bc=color;tc=T.text;}
+                          if (checked&&isCorrect) {bg="rgba(52,211,153,0.12)";bc=T.green;tc="#D1FAE5";}
+                          if (checked&&selected&&!isCorrect) {bg="rgba(248,113,113,0.12)";bc=T.red;tc="#FEE2E2";}
+                          return (
+                            <div key={oi} role="radio" aria-checked={selected} aria-disabled={checked} tabIndex={checked ? -1 : 0} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") {e.preventDefault(); pickAnswer(qi,oi);} }} onClick={() => pickAnswer(qi,oi)} style={{display:"flex", alignItems:"flex-start", gap:"8px", padding:"9px 12px", borderRadius:"8px", cursor:checked ? "default" : "pointer", background:bg, border:`1px solid ${bc}`}}>
+                              <div style={{width:"16px", height:"16px", borderRadius:"50%", border:`2px solid ${bc}`, background:((!checked&&selected)||(checked&&isCorrect)) ? bc : "transparent", flexShrink:0, marginTop:"2px", display:"flex", alignItems:"center", justifyContent:"center"}}>
+                                {checked&&isCorrect&&<span style={{fontSize:"9px",color:"#000",fontWeight:900}}>✓</span>}
+                                {checked&&selected&&!isCorrect&&<span style={{fontSize:"9px",color:"#fff",fontWeight:900}}>✗</span>}
+                              </div>
+                              <span style={{fontSize:"13px", color:tc, lineHeight:"1.55"}}>{opt}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {checked && (
+                        <div style={{marginTop:"10px", paddingLeft:"36px"}}>
+                          <div style={{background:isRight ? "rgba(52,211,153,0.08)" : "rgba(248,113,113,0.08)", border:`1px solid ${isRight ? "rgba(52,211,153,0.3)" : "rgba(248,113,113,0.3)"}`, borderRadius:"8px", padding:"10px 12px", display:"flex", gap:"8px", alignItems:"flex-start"}}>
+                            <span style={{fontSize:"12px", fontWeight:700, color:isRight ? T.green : T.red, flexShrink:0}}>{isRight ? "✓ Correct" : "✗ Wrong"}</span>
+                            <span style={{fontSize:"12px", color:T.textSub, lineHeight:"1.65"}}>{q.explain}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {!mcqChecked[phaseId] && (
+                <div style={{marginTop:"16px", textAlign:"center"}}>
+                  <button onClick={submitQuiz} disabled={!allAnswered} style={{background:allAnswered ? `rgba(${rgb},0.2)` : "rgba(255,255,255,0.04)", border:`2px solid ${allAnswered ? color : "rgba(255,255,255,0.1)"}`, color:allAnswered ? color : T.textDim, padding:"10px 30px", borderRadius:"10px", cursor:allAnswered ? "pointer" : "not-allowed", fontSize:"14px", fontWeight:700, fontFamily:font, letterSpacing:"1px"}}>
+                    Submit Quiz ({answeredCount}/{phase.assessment.questions.length} answered)
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
