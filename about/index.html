@@ -129,12 +129,20 @@
             <details><summary>Engineering focus</summary><p>Connecting the Gemini API to a Python interface and using structured processing to support summaries and automatically generated quizzes.</p></details>
             <a class="text-link" href="https://ai-study-buddy-new.streamlit.app/" target="_blank" rel="noopener noreferrer">Open application <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a>
           </article>
-          <article class="project-card" style="--accent: var(--amber)">
-            <div class="project-top"><i class="fa-solid fa-cloud-sun" aria-hidden="true"></i><span>PYTHON / WEB APPLICATION</span></div>
-            <h3>World Weather Hub</h3><p>A Flask web application for global weather and forecast information. The project connects a Python backend, browser interactions and location-aware data from external APIs.</p>
-            <div class="stack"><span>Flask</span><span>JavaScript</span><span>OpenWeatherMap</span></div>
-            <details><summary>Engineering focus</summary><p>Integrating weather and geolocation APIs, handling application data and presenting forecasts through a browser interface.</p></details>
-            <a class="text-link" href="https://youtu.be/DqXydfCwO1M" target="_blank" rel="noopener noreferrer">Watch project demo <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a>
+          <article class="project-card" aria-labelledby="weather-title" style="--accent: var(--amber)">
+            <div class="project-top"><i class="fa-solid fa-cloud-sun" aria-hidden="true"></i><span>FULL-STACK / WEATHER &amp; TRAVEL</span></div>
+            <h3 id="weather-title">World Weather Hub</h3>
+            <p>From checking the forecast to planning the day.</p>
+            <p>A responsive Flask application deployed on Vercel, combining live weather with practical travel planning. Search cities, explore local-time forecasts and a five-day outlook, and create weather-aware 1&ndash;5-day itineraries. Saved preferences, Celsius/Fahrenheit switching and downloadable PDFs with clickable map links make plans easy to revisit and share.</p>
+            <div class="stack" aria-label="World Weather Hub technology stack"><span>Python</span><span>Flask</span><span>JavaScript</span><span>OpenWeather</span><span>ReportLab</span><span>Docker</span><span>Gunicorn</span><span>GitHub Actions</span><span>Vercel</span></div>
+            <details><summary>Application highlights</summary><p>City autocomplete, optional geolocation, recent cities and Celsius/Fahrenheit preferences. Current conditions, a three-hour temperature trend covering the next 24 hours, and a five-day outlook in the selected city&apos;s local time.</p><p>Customizable 1&ndash;5-day itineraries with weather-aware activity suggestions and downloadable PDFs containing clickable map links. The planner uses curated routes and rules, not live bookings or verified travel schedules.</p></details>
+            <details><summary>Engineering focus</summary><p>Server-side API credentials, input validation, provider timeouts and clear error handling. Vercel configuration separates the Flask backend from CDN-served static assets.</p><p>The repository also includes an alternative non-root Docker/Gunicorn runtime and GitHub Actions checks for Python, JavaScript, container builds and deployment smoke tests.</p></details>
+            <div class="weather-card-links">
+              <a class="text-link" href="https://world-weather-hub.vercel.app" target="_blank" rel="noopener noreferrer">Open application <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a>
+              <a class="text-link" href="https://github.com/Saima-Devops/weather-hub-app" target="_blank" rel="noopener noreferrer">View repository <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a>
+              <a class="text-link" href="https://github.com/Saima-Devops/weather-hub-app#readme" target="_blank" rel="noopener noreferrer">Setup &amp; Deployment Guide <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a>
+              <a class="text-link" href="https://youtu.be/DqXydfCwO1M" target="_blank" rel="noopener noreferrer">Watch project demo <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a>
+            </div>
           </article>
           <article class="project-card" style="--accent: var(--pink)">
             <div class="project-top"><i class="fa-solid fa-award" aria-hidden="true"></i><span>CLOUD + DEVOPS/ PRACTICAL PROJECTS</span></div>
