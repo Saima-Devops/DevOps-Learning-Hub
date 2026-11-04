@@ -1,5 +1,4 @@
 /* Expanded profile highlights and a non-interactive learning status. */
-.timeline-period{display:block;font:11px/1.8 var(--mono);color:var(--sub);margin-top:4px}
 .education-grid .credential-list span,.pursuing .institution{color:var(--cyan)}
 .timeline .employer-website{font-size:12px;margin:0 0 12px;color:var(--muted);overflow-wrap:anywhere}
 .employer-website a{color:var(--sub);transition:color .2s ease}
